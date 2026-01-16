@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>株式会社アクア・ノヴァ 販売管理システム 【取引先マスタ】</title>
+<title>取引先マスタ入力</title>
 <style>
   body { font-family: sans-serif; margin: 20px; }
   label { display: block; margin-top: 10px; }
@@ -14,12 +14,13 @@
 </head>
 <body>
 
-<h2>株式会社アクア・ノヴァ 販売管理システム 【取引先マスタ】</h2>
+<h2>取引先マスタ入力</h2>
 
-<label>取引先カナ</label>
+<!-- 入力フォーム -->
+<label>会社名カナ</label>
 <input type="text" id="kana">
 
-<label>取引先名</label>
+<label>会社名</label>
 <input type="text" id="name">
 
 <label>部署</label>
@@ -27,9 +28,6 @@
 
 <label>担当者</label>
 <input type="text" id="person">
-
-<label>郵便番号</label>
-<input type="text" id="postal_code">
 
 <label>住所</label>
 <textarea id="address"></textarea>
@@ -54,55 +52,40 @@
 <label>支店名</label>
 <input type="text" id="bank_branch">
 
-<label>口座番号（ハイフンなし）</label>
+<label>口座番号＋種別</label>
 <input type="text" id="bank_account">
 
 <label>口座名義</label>
 <input type="text" id="account_holder">
 
+<!-- 操作ボタン -->
 <br>
 <button onclick="insertData()">登録</button>
 <button onclick="updateData()">更新</button>
 <button id="deleteButton" onclick="deleteData()">削除</button>
 <button onclick="loadList()">一覧表示</button>
 
+<!-- 一覧表示 -->
 <div id="listArea"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+
+// ★ Supabase 設定（あなたの値に変更）
 const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ★ 自社レコードの固定UUID（削除禁止）
 const SELF_ID = "00000000-0000-0000-0000-000000000001";
 
+// 現在選択中のID
 let currentId = null;
 
-function collectForm() {
-  return {
-    kana: document.getElementById("kana").value,
-    name: document.getElementById("name").value,
-    department: document.getElementById("department").value,
-    person: document.getElementById("person").value,
-    postal_code: document.getElementById("postal_code").value,
-    address: document.getElementById("address").value,
-    tel: document.getElementById("tel").value,
-    fax: document.getElementById("fax").value,
-    invoice_number: document.getElementById("invoice_number").value,
-    billing_email_or_url: document.getElementById("billing_email_or_url").value,
-    bank_name: document.getElementById("bank_name").value,
-    bank_branch: document.getElementById("bank_branch").value,
-    bank_account: document.getElementById("bank_account").value,
-    account_holder: document.getElementById("account_holder").value
-  };
-}
-
-function clearForm() {
-  document.querySelectorAll("input, textarea").forEach(el => el.value = "");
-  currentId = null;
-}
-
+// ----------------------------
+// 登録
+// ----------------------------
 async function insertData() {
   const data = collectForm();
 
@@ -116,9 +99,12 @@ async function insertData() {
   }
 }
 
+// ----------------------------
+// 更新
+// ----------------------------
 async function updateData() {
   if (!currentId) {
-    alert("一覧から編集対象を選択してください");
+    alert("一覧から編集する行を選択してください");
     return;
   }
 
@@ -138,14 +124,17 @@ async function updateData() {
   }
 }
 
+// ----------------------------
+// 削除（自社は削除不可）
+// ----------------------------
 async function deleteData() {
   if (!currentId) {
-    alert("一覧から削除対象を選択してください");
+    alert("一覧から削除する行を選択してください");
     return;
   }
 
   if (currentId === SELF_ID) {
-    alert("このレコードは削除できません");
+    alert("自社レコードは削除できません");
     return;
   }
 
@@ -165,6 +154,9 @@ async function deleteData() {
   }
 }
 
+// ----------------------------
+// 一覧表示
+// ----------------------------
 async function loadList() {
   const { data, error } = await supabase
     .from("torihikisaki")
@@ -176,7 +168,7 @@ async function loadList() {
     return;
   }
 
-  let html = "<table><tr><th>カナ</th><th>取引先名</th><th>担当者</th><th>選択</th></tr>";
+  let html = "<table><tr><th>カナ</th><th>会社名</th><th>担当者</th><th>選択</th></tr>";
 
   data.forEach(row => {
     html += `
@@ -193,6 +185,9 @@ async function loadList() {
   document.getElementById("listArea").innerHTML = html;
 }
 
+// ----------------------------
+// 行選択 → フォームへ反映
+// ----------------------------
 async function selectRow(id) {
   currentId = id;
 
@@ -211,22 +206,13 @@ async function selectRow(id) {
   document.getElementById("name").value = data.name || "";
   document.getElementById("department").value = data.department || "";
   document.getElementById("person").value = data.person || "";
-　document.getElementById("postal_code").value = data.postal_code || "";
   document.getElementById("address").value = data.address || "";
   document.getElementById("tel").value = data.tel || "";
   document.getElementById("fax").value = data.fax || "";
   document.getElementById("invoice_number").value = data.invoice_number || "";
   document.getElementById("billing_email_or_url").value = data.billing_email_or_url || "";
+
   document.getElementById("bank_name").value = data.bank_name || "";
   document.getElementById("bank_branch").value = data.bank_branch || "";
   document.getElementById("bank_account").value = data.bank_account || "";
   document.getElementById("account_holder").value = data.account_holder || "";
-}
-
-</script>
-
-</body>
-</html>
-
-
-
