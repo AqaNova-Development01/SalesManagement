@@ -6,7 +6,7 @@
 <style>
   body { font-family: sans-serif; margin: 20px; }
   label { display: block; margin-top: 10px; }
-  input, textarea, select { width: 300px; padding: 5px; }
+  input, textarea { width: 300px; padding: 5px; }
   button { margin-top: 15px; padding: 8px 20px; }
   table { margin-top: 20px; border-collapse: collapse; width: 90%; }
   th, td { border: 1px solid #ccc; padding: 6px; }
@@ -15,6 +15,10 @@
 <body>
 
 <h2>アクア・ノヴァ 販売管理　【 取引先マスタ入力 】</h2>
+
+<!-- コード番号（自動採番） -->
+<label>コード番号（自動採番）</label>
+<input type="text" id="id" readonly style="background:#eee;">
 
 <!-- 入力フォーム -->
 <label>会社名カナ</label>
@@ -65,7 +69,7 @@
 <br>
 <button onclick="insertData()">登録</button>
 <button onclick="updateData()">更新</button>
-<button id="deleteButton" onclick="deleteData()">削除</button>
+<button onclick="deleteData()">削除</button>
 <button onclick="loadList()">一覧表示</button>
 
 <!-- 一覧表示 -->
@@ -74,15 +78,11 @@
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-  // Supabase 設定
   const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // 自社レコード固定ID（削除禁止）
   const SELF_ID = "00000000-0000-0000-0000-000000000001";
-
-  // 現在選択中のID
   let currentId = null;
 
   // ----------------------------
@@ -170,11 +170,12 @@
       return;
     }
 
-    let html = "<table><tr><th>カナ</th><th>会社名</th><th>担当者</th><th>選択</th></tr>";
+    let html = "<table><tr><th>コード</th><th>カナ</th><th>会社名</th><th>担当者</th><th>選択</th></tr>";
 
     data.forEach(row => {
       html += `
         <tr>
+          <td>${row.id}</td>
           <td>${row.kana || ""}</td>
           <td>${row.name}</td>
           <td>${row.person || ""}</td>
@@ -204,6 +205,7 @@
       return;
     }
 
+    document.getElementById("id").value = data.id;
     document.getElementById("kana").value = data.kana || "";
     document.getElementById("name").value = data.name || "";
     document.getElementById("department").value = data.department || "";
