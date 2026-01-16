@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>仕入入力</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  label { display: block; margin-top: 10px; }
+  input, select, textarea { width: 300px; padding: 5px; }
+  button { margin-top: 15px; padding: 8px 20px; }
+  table { margin-top: 20px; border-collapse: collapse; width: 95%; }
+  th, td { border: 1px solid #ccc; padding: 6px; }
+</style>
+</head>
+<body>
+
+<h2>アクア・ノヴァ 販売管理　【 仕入入力 】</h2>
+
+<!-- 仕入番号（UUID） -->
+<label>仕入番号（自動採番）</label>
+<input type="text" id="id" readonly style="background:#eee;">
+
+<!-- 日付 -->
+<label>発注日</label>
+<input type="date" id="order_date">
+
+<label>納品日</label>
+<input type="date" id="delivery_date">
+
+<label>計上日（納品日で初期セット、編集可）</label>
+<input type="date" id="keijo_date">
+
+<!-- 取引先 -->
+<h3>仕入先</h3>
+
+<label>仕入先選択</label>
+<select id="torihikisaki_select"></select>
+
+<label>仕入先コード</label>
+<input type="text" id="torihikisaki_id" readonly style="background:#eee;">
+
+<label>仕入先名</label>
+<input type="text" id="torihikisaki_name" readonly style="background:#eee;">
+
+<!-- 品目 -->
+<h3>品目</h3>
+
+<label>品目選択（仕入先で絞り込み）</label>
+<select id="hinmoku_select"></select>
+
+<label>品目コード</label>
+<input type="text" id="hinmoku_id" readonly style="background:#eee;">
+
+<label>品目名（編集可）</label>
+<input type="text" id="hinmoku_name">
+
+<label>単価（編集可）</label>
+<input type="number" id="unit_price" step="1">
+
+<label>税率（編集可）</label>
+<input type="number" id="tax_rate" step="0.01">
+
+<label>数量</label>
+<input type="number" id="qty" step="1">
+
+<label>金額（自動計算）</label>
+<input type="number" id="amount" readonly style="background:#eee;">
+
+<label>備考</label>
+<textarea id="note"></textarea>
+
+<!-- 操作ボタン -->
+<br>
+<button onclick="insertData()">登録</button>
+<button onclick="updateData()">更新</button>
+<button onclick="deleteData()">削除</button>
+<button onclick="loadList()">一覧表示</button>
+
+<!-- 一覧表示 -->
+<div id="listArea"></div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentId = null;
+
+  // ----------------------------
+  // 初期ロード
+  // ----------------------------
+  window.onload = async () => {
+    await loadTorihikisakiList();
+
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("order_date").value = today;
+    document.getElementById("delivery_date").value = today;
+    document.getElementById("keijo_date").value = today;
+  };
+
+  // ----------------------------
+  // 仕入先一覧ロード
+  // ----------------------------
+  async function loadTorihikisakiList() {
+    const { data } = await supabase.from("torihikisaki").select("*").order("kana");
+    const sel = document.getElementById("torihikisaki_select");
+    sel.innerHTML = "<option value=''>選択してください</option>";
+
+    data.forEach(t => {
+      sel.innerHTML += `<option value="${t.id}" data-name="${t.name}">${t.kana} / ${t.name}</option>`;
+    });
+
+    sel.onchange = async () => {
+      const id = sel.value;
+      const name = sel.options[sel.selectedIndex].dataset.name;
+      document.getElementById("torihikisaki_id").value = id;
+      document.getElementById("torihikisaki_name").value = name;
+
+      await loadHinmokuList(id);
+    };
+  }
+
+  // ----------------------------
+  // 品目一覧ロード（仕入先で絞り込み）
+  // ----------------------------
+  async function loadHinmokuList(torihikisaki_id) {
+    const { data } = await supabase
+      .from("hinmoku")
+      .select("*")
+      .eq("torihikisaki_id", torihikisaki_id)
+      .order("name");
+
+    const sel = document.getElementById("hinmoku_select");
+    sel.innerHTML = "<option value=''>選択してください</option>";
+
+    data.forEach(h => {
+      sel.innerHTML += `<option value="${h.id}" data-name="${h.name}" data-price="${h.unit_price}" data-tax="${h.tax_rate}">
+        ${h.name}
+      </option>`;
+    });
+
+    sel.onchange = () => {
+      const opt = sel.options[sel.selectedIndex];
+      document.getElementById("hinmoku_id").value = sel.value;
+      document.getElementById("hinmoku_name").value = opt.dataset.name;
+      document.getElementById("unit_price").value = opt.dataset.price;
+      document.getElementById("tax_rate").value = opt.dataset.tax;
+      calcAmount();
+    };
+  }
+
+  // ----------------------------
+  // 金額自動計算
+  // ----------------------------
+  document.getElementById("qty").oninput =
+  document.getElementById("unit_price").oninput = calcAmount;
+
+  function calcAmount() {
+    const qty = Number(document.getElementById("qty").value);
+    const price = Number(document.getElementById("unit_price").value);
+    document.getElementById("amount").value = qty * price;
+  }
+
+  // ----------------------------
+  // 登録
+  // ----------------------------
+  async function insertData() {
+    const data = collectForm();
+
+    const { error } = await supabase.from("shiire").insert([data]);
+    if (error) {
+      alert("登録エラー: " + error.message);
+    } else {
+      alert("登録しました");
+      clearForm();
+      loadList();
+    }
+  }
+
+  // ----------------------------
+  // 更新
+  // ----------------------------
+  async function updateData() {
+    if (!currentId) {
+      alert("一覧から編集する行を選択してください");
+      return;
+    }
+
+    const data = collectForm();
+
+    const { error } = await supabase
+      .from("shiire")
+      .update(data)
+      .eq("id", currentId);
+
+    if (error) {
+      alert("更新エラー: " + error.message);
+    } else {
+      alert("更新しました");
+      clearForm();
+      loadList();
+    }
+  }
+
+  // ----------------------------
+  // 削除
+  // ----------------------------
+  async function deleteData() {
+    if (!currentId) {
+      alert("一覧から削除する行を選択してください");
+      return;
+    }
+
+    if (!confirm("本当に削除しますか？")) return;
+
+    const { error } = await supabase
+      .from("shiire")
+      .delete()
+      .eq("id", currentId);
+
+    if (error) {
+      alert("削除エラー: " + error.message);
+    } else {
+      alert("削除しました");
+      clearForm();
+      loadList();
+    }
+  }
+
+  // ----------------------------
+  // 一覧表示
+  // ----------------------------
+  async function loadList() {
+    const { data, error } = await supabase
+      .from("shiire")
+      .select("*")
+      .order("order_date", { ascending: false });
+
+    if (error) {
+      alert("一覧取得エラー: " + error.message);
+      return;
+    }
+
+    let html = "<table><tr><th>仕入番号</th><th>発注日</th><th>仕入先</th><th>品目</th><th>金額</th><th>選択</th></tr>";
+
+    data.forEach(row => {
+      html += `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.order_date}</td>
+          <td>${row.torihikisaki_id}</td>
+          <td>${row.hinmoku_name}</td>
+          <td>${row.amount}</td>
+          <td><button onclick='selectRow("${row.id}")'>選択</button></td>
+        </tr>
+      `;
+    });
+
+    html += "</table>";
+    document.getElementById("listArea").innerHTML = html;
+  }
+
+  // ----------------------------
+  // 行選択 → フォームへ反映
+  // ----------------------------
+  async function selectRow(id) {
+    currentId = id;
+
+    const { data, error } = await supabase
+      .from("shiire")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      alert("データ取得エラー: " + error.message);
+      return;
+    }
+
+    document.getElementById("id").value = data.id;
+    document.getElementById("order_date").value = data.order_date;
+    document.getElementById("delivery_date").value = data.delivery_date;
+    document.getElementById("keijo_date").value = data.keijo_date;
+
+    document.getElementById("torihikisaki_id").value = data.torihikisaki_id;
+    document.getElementById("torihikisaki_name").value = "";
+
+    document.getElementById("hinmoku_id").value = data.hinmoku_id;
+    document.getElementById("hinmoku_name").value = data.hinmoku_name;
+    document.getElementById("unit_price").value = data.unit_price;
+    document.getElementById("tax_rate").value = data.tax_rate;
+    document.getElementById("qty").value = data.qty;
+    document.getElementById("amount").value = data.amount;
+    document.getElementById("note").value = data.note;
+  }
+
+  // ----------------------------
+  // フォーム → DB項目
+  // ----------------------------
+  function collectForm() {
+    return {
+      order_date: document.getElementById("order_date").value,
+      delivery_date: document.getElementById("delivery_date").value,
+      keijo_date: document.getElementById("keijo_date").value,
+      torihikisaki_id: document.getElementById("torihikisaki_id").value,
+      hinmoku_id: document.getElementById("hinmoku_id").value,
+      hinmoku_name: document.getElementById("hinmoku_name").value,
+      unit_price: Number(document.getElementById("unit_price").value),
+      tax_rate: Number(document.getElementById("tax_rate").value),
+      qty: Number(document.getElementById("qty").value),
+      amount: Number(document.getElementById("amount").value),
+      note: document.getElementById("note").value
+    };
+  }
+
+  // ----------------------------
+  // フォームクリア
+  // ----------------------------
+  function clearForm() {
+    document.querySelectorAll("input, textarea").forEach(el => {
+      if (el.type !== "date" && el.id !== "id") el.value = "";
+    });
+    currentId = null;
+  }
+
+</script>
+
+</body>
+</html>
