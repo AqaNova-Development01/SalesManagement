@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>•i–Úƒ}ƒXƒ^“ü—Í</title>
+<title>å“ç›®ãƒã‚¹ã‚¿å…¥åŠ›</title>
 <style>
   body { font-family: sans-serif; margin: 20px; }
   label { display: block; margin-top: 10px; }
@@ -14,71 +14,71 @@
 </head>
 <body>
 
-<h2>ƒAƒNƒAEƒmƒ”ƒ@ ”Ì”„ŠÇ—@y •i–Úƒ}ƒXƒ^“ü—Í z</h2>
+<h2>ã‚¢ã‚¯ã‚¢ãƒ»ãƒãƒ´ã‚¡ è²©å£²ç®¡ç†ã€€ã€ å“ç›®ãƒã‚¹ã‚¿å…¥åŠ› ã€‘</h2>
 
-<!-- ƒR[ƒh”Ô†i©“®Ì”Ôj -->
-<label>•i–ÚƒR[ƒhi©“®Ì”Ôj</label>
+<!-- ã‚³ãƒ¼ãƒ‰ç•ªå·ï¼ˆè‡ªå‹•æ¡ç•ªï¼‰ -->
+<label>å“ç›®ã‚³ãƒ¼ãƒ‰ï¼ˆè‡ªå‹•æ¡ç•ªï¼‰</label>
 <input type="text" id="id" readonly style="background:#eee;">
 
-<!-- “ü—ÍƒtƒH[ƒ€ -->
-<label>•i–Ú–¼</label>
+<!-- å…¥åŠ›ãƒ•ã‚©ãƒ¼ãƒ  -->
+<label>å“ç›®å</label>
 <input type="text" id="name">
 
-<label>’P‰¿</label>
+<label>å˜ä¾¡</label>
 <input type="number" id="unit_price" step="1">
 
-<label>’PˆÊ</label>
+<label>å˜ä½</label>
 <input type="text" id="unit">
 
-<label>Å‹æ•ª</label>
-<input type="text" id="tax_category" placeholder="—áF‰ÛÅ / ”ñ‰ÛÅ / –ÆÅ ‚È‚Ç">
+<label>ç¨åŒºåˆ†</label>
+<input type="text" id="tax_category" placeholder="ä¾‹ï¼šèª²ç¨ / éèª²ç¨ / å…ç¨ ãªã©">
 
-<label>”õl</label>
+<label>å‚™è€ƒ</label>
 <textarea id="note"></textarea>
 
-<!-- ‘€ìƒ{ƒ^ƒ“ -->
+<!-- æ“ä½œãƒœã‚¿ãƒ³ -->
 <br>
-<button onclick="insertData()">“o˜^</button>
-<button onclick="updateData()">XV</button>
-<button onclick="deleteData()">íœ</button>
-<button onclick="loadList()">ˆê——•\¦</button>
+<button onclick="insertData()">ç™»éŒ²</button>
+<button onclick="updateData()">æ›´æ–°</button>
+<button onclick="deleteData()">å‰Šé™¤</button>
+<button onclick="loadList()">ä¸€è¦§è¡¨ç¤º</button>
 
-<!-- ˆê——•\¦ -->
+<!-- ä¸€è¦§è¡¨ç¤º -->
 <div id="listArea"></div>
 
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-  // Supabase İ’è
+  // Supabase è¨­å®š
   const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Œ»İ‘I‘ğ’†‚ÌID
+  // ç¾åœ¨é¸æŠä¸­ã®ID
   let currentId = null;
 
   // ----------------------------
-  // “o˜^
+  // ç™»éŒ²
   // ----------------------------
   async function insertData() {
     const data = collectForm();
 
     const { error } = await supabase.from("hinmoku").insert([data]);
     if (error) {
-      alert("“o˜^ƒGƒ‰[: " + error.message);
+      alert("ç™»éŒ²ã‚¨ãƒ©ãƒ¼: " + error.message);
     } else {
-      alert("“o˜^‚µ‚Ü‚µ‚½");
+      alert("ç™»éŒ²ã—ã¾ã—ãŸ");
       clearForm();
       loadList();
     }
   }
 
   // ----------------------------
-  // XV
+  // æ›´æ–°
   // ----------------------------
   async function updateData() {
     if (!currentId) {
-      alert("ˆê——‚©‚ç•ÒW‚·‚és‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢");
+      alert("ä¸€è¦§ã‹ã‚‰ç·¨é›†ã™ã‚‹è¡Œã‚’é¸æŠã—ã¦ãã ã•ã„");
       return;
     }
 
@@ -90,24 +90,24 @@
       .eq("id", currentId);
 
     if (error) {
-      alert("XVƒGƒ‰[: " + error.message);
+      alert("æ›´æ–°ã‚¨ãƒ©ãƒ¼: " + error.message);
     } else {
-      alert("XV‚µ‚Ü‚µ‚½");
+      alert("æ›´æ–°ã—ã¾ã—ãŸ");
       clearForm();
       loadList();
     }
   }
 
   // ----------------------------
-  // íœ
+  // å‰Šé™¤
   // ----------------------------
   async function deleteData() {
     if (!currentId) {
-      alert("ˆê——‚©‚çíœ‚·‚és‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢");
+      alert("ä¸€è¦§ã‹ã‚‰å‰Šé™¤ã™ã‚‹è¡Œã‚’é¸æŠã—ã¦ãã ã•ã„");
       return;
     }
 
-    if (!confirm("–{“–‚Éíœ‚µ‚Ü‚·‚©H")) return;
+    if (!confirm("æœ¬å½“ã«å‰Šé™¤ã—ã¾ã™ã‹ï¼Ÿ")) return;
 
     const { error } = await supabase
       .from("hinmoku")
@@ -115,16 +115,16 @@
       .eq("id", currentId);
 
     if (error) {
-      alert("íœƒGƒ‰[: " + error.message);
+      alert("å‰Šé™¤ã‚¨ãƒ©ãƒ¼: " + error.message);
     } else {
-      alert("íœ‚µ‚Ü‚µ‚½");
+      alert("å‰Šé™¤ã—ã¾ã—ãŸ");
       clearForm();
       loadList();
     }
   }
 
   // ----------------------------
-  // ˆê——•\¦
+  // ä¸€è¦§è¡¨ç¤º
   // ----------------------------
   async function loadList() {
     const { data, error } = await supabase
@@ -133,11 +133,11 @@
       .order("name");
 
     if (error) {
-      alert("ˆê——æ“¾ƒGƒ‰[: " + error.message);
+      alert("ä¸€è¦§å–å¾—ã‚¨ãƒ©ãƒ¼: " + error.message);
       return;
     }
 
-    let html = "<table><tr><th>ƒR[ƒh</th><th>•i–Ú–¼</th><th>’P‰¿</th><th>’PˆÊ</th><th>Å‹æ•ª</th><th>‘I‘ğ</th></tr>";
+    let html = "<table><tr><th>ã‚³ãƒ¼ãƒ‰</th><th>å“ç›®å</th><th>å˜ä¾¡</th><th>å˜ä½</th><th>ç¨åŒºåˆ†</th><th>é¸æŠ</th></tr>";
 
     data.forEach(row => {
       html += `
@@ -147,7 +147,7 @@
           <td>${row.unit_price ?? ""}</td>
           <td>${row.unit || ""}</td>
           <td>${row.tax_category || ""}</td>
-          <td><button onclick='selectRow("${row.id}")'>‘I‘ğ</button></td>
+          <td><button onclick='selectRow("${row.id}")'>é¸æŠ</button></td>
         </tr>
       `;
     });
@@ -157,7 +157,7 @@
   }
 
   // ----------------------------
-  // s‘I‘ğ ¨ ƒtƒH[ƒ€‚Ö”½‰f
+  // è¡Œé¸æŠ â†’ ãƒ•ã‚©ãƒ¼ãƒ ã¸åæ˜ 
   // ----------------------------
   async function selectRow(id) {
     currentId = id;
@@ -169,7 +169,7 @@
       .single();
 
     if (error) {
-      alert("ƒf[ƒ^æ“¾ƒGƒ‰[: " + error.message);
+      alert("ãƒ‡ãƒ¼ã‚¿å–å¾—ã‚¨ãƒ©ãƒ¼: " + error.message);
       return;
     }
 
@@ -182,7 +182,7 @@
   }
 
   // ----------------------------
-  // ƒtƒH[ƒ€ ¨ DB€–Ú
+  // ãƒ•ã‚©ãƒ¼ãƒ  â†’ DBé …ç›®
   // ----------------------------
   function collectForm() {
     return {
@@ -197,14 +197,14 @@
   }
 
   // ----------------------------
-  // ƒtƒH[ƒ€ƒNƒŠƒA
+  // ãƒ•ã‚©ãƒ¼ãƒ ã‚¯ãƒªã‚¢
   // ----------------------------
   function clearForm() {
     document.querySelectorAll("input, textarea").forEach(el => el.value = "");
     currentId = null;
   }
 
-  // ‰æ–Ê•\¦‚Éˆê——‚ğ©“®•\¦‚µ‚½‚¢ê‡‚ÍƒRƒƒ“ƒg‰ğœ
+  // ç”»é¢è¡¨ç¤ºæ™‚ã«ä¸€è¦§ã‚’è‡ªå‹•è¡¨ç¤ºã—ãŸã„å ´åˆã¯ã‚³ãƒ¡ãƒ³ãƒˆè§£é™¤
   // loadList();
 
 </script>
