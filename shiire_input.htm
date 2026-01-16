@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>d“ü“ü—Í</title>
+<title>ä»•å…¥å…¥åŠ›</title>
 <style>
   body { font-family: sans-serif; margin: 20px; }
   label { display: block; margin-top: 10px; }
@@ -14,69 +14,69 @@
 </head>
 <body>
 
-<h2>ƒAƒNƒAEƒmƒ”ƒ@ ”Ì”„ŠÇ—@y d“ü“ü—Í z</h2>
+<h2>ã‚¢ã‚¯ã‚¢ãƒ»ãƒãƒ´ã‚¡ è²©å£²ç®¡ç†ã€€ã€ ä»•å…¥å…¥åŠ› ã€‘</h2>
 
-<!-- d“ü”Ô†iUUIDj -->
-<label>d“ü”Ô†i©“®Ì”Ôj</label>
+<!-- ä»•å…¥ç•ªå·ï¼ˆUUIDï¼‰ -->
+<label>ä»•å…¥ç•ªå·ï¼ˆè‡ªå‹•æ¡ç•ªï¼‰</label>
 <input type="text" id="id" readonly style="background:#eee;">
 
-<!-- “ú•t -->
-<label>”­’“ú</label>
+<!-- æ—¥ä»˜ -->
+<label>ç™ºæ³¨æ—¥</label>
 <input type="date" id="order_date">
 
-<label>”[•i“ú</label>
+<label>ç´å“æ—¥</label>
 <input type="date" id="delivery_date">
 
-<label>Œvã“úi”[•i“ú‚Å‰ŠúƒZƒbƒgA•ÒW‰Âj</label>
+<label>è¨ˆä¸Šæ—¥ï¼ˆç´å“æ—¥ã§åˆæœŸã‚»ãƒƒãƒˆã€ç·¨é›†å¯ï¼‰</label>
 <input type="date" id="keijo_date">
 
-<!-- æˆøæ -->
-<h3>d“üæ</h3>
+<!-- å–å¼•å…ˆ -->
+<h3>ä»•å…¥å…ˆ</h3>
 
-<label>d“üæ‘I‘ğ</label>
+<label>ä»•å…¥å…ˆé¸æŠ</label>
 <select id="torihikisaki_select"></select>
 
-<label>d“üæƒR[ƒh</label>
+<label>ä»•å…¥å…ˆã‚³ãƒ¼ãƒ‰</label>
 <input type="text" id="torihikisaki_id" readonly style="background:#eee;">
 
-<label>d“üæ–¼</label>
+<label>ä»•å…¥å…ˆå</label>
 <input type="text" id="torihikisaki_name" readonly style="background:#eee;">
 
-<!-- •i–Ú -->
-<h3>•i–Ú</h3>
+<!-- å“ç›® -->
+<h3>å“ç›®</h3>
 
-<label>•i–Ú‘I‘ğid“üæ‚Åi‚è‚İj</label>
+<label>å“ç›®é¸æŠï¼ˆä»•å…¥å…ˆã§çµã‚Šè¾¼ã¿ï¼‰</label>
 <select id="hinmoku_select"></select>
 
-<label>•i–ÚƒR[ƒh</label>
+<label>å“ç›®ã‚³ãƒ¼ãƒ‰</label>
 <input type="text" id="hinmoku_id" readonly style="background:#eee;">
 
-<label>•i–Ú–¼i•ÒW‰Âj</label>
+<label>å“ç›®åï¼ˆç·¨é›†å¯ï¼‰</label>
 <input type="text" id="hinmoku_name">
 
-<label>’P‰¿i•ÒW‰Âj</label>
+<label>å˜ä¾¡ï¼ˆç·¨é›†å¯ï¼‰</label>
 <input type="number" id="unit_price" step="1">
 
-<label>Å—¦i•ÒW‰Âj</label>
+<label>ç¨ç‡ï¼ˆç·¨é›†å¯ï¼‰</label>
 <input type="number" id="tax_rate" step="0.01">
 
-<label>”—Ê</label>
+<label>æ•°é‡</label>
 <input type="number" id="qty" step="1">
 
-<label>‹àŠzi©“®ŒvZj</label>
+<label>é‡‘é¡ï¼ˆè‡ªå‹•è¨ˆç®—ï¼‰</label>
 <input type="number" id="amount" readonly style="background:#eee;">
 
-<label>”õl</label>
+<label>å‚™è€ƒ</label>
 <textarea id="note"></textarea>
 
-<!-- ‘€ìƒ{ƒ^ƒ“ -->
+<!-- æ“ä½œãƒœã‚¿ãƒ³ -->
 <br>
-<button onclick="insertData()">“o˜^</button>
-<button onclick="updateData()">XV</button>
-<button onclick="deleteData()">íœ</button>
-<button onclick="loadList()">ˆê——•\¦</button>
+<button onclick="insertData()">ç™»éŒ²</button>
+<button onclick="updateData()">æ›´æ–°</button>
+<button onclick="deleteData()">å‰Šé™¤</button>
+<button onclick="loadList()">ä¸€è¦§è¡¨ç¤º</button>
 
-<!-- ˆê——•\¦ -->
+<!-- ä¸€è¦§è¡¨ç¤º -->
 <div id="listArea"></div>
 
 <script type="module">
@@ -89,7 +89,7 @@
   let currentId = null;
 
   // ----------------------------
-  // ‰Šúƒ[ƒh
+  // åˆæœŸãƒ­ãƒ¼ãƒ‰
   // ----------------------------
   window.onload = async () => {
     await loadTorihikisakiList();
@@ -101,12 +101,12 @@
   };
 
   // ----------------------------
-  // d“üæˆê——ƒ[ƒh
+  // ä»•å…¥å…ˆä¸€è¦§ãƒ­ãƒ¼ãƒ‰
   // ----------------------------
   async function loadTorihikisakiList() {
     const { data } = await supabase.from("torihikisaki").select("*").order("kana");
     const sel = document.getElementById("torihikisaki_select");
-    sel.innerHTML = "<option value=''>‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢</option>";
+    sel.innerHTML = "<option value=''>é¸æŠã—ã¦ãã ã•ã„</option>";
 
     data.forEach(t => {
       sel.innerHTML += `<option value="${t.id}" data-name="${t.name}">${t.kana} / ${t.name}</option>`;
@@ -123,7 +123,7 @@
   }
 
   // ----------------------------
-  // •i–Úˆê——ƒ[ƒhid“üæ‚Åi‚è‚İj
+  // å“ç›®ä¸€è¦§ãƒ­ãƒ¼ãƒ‰ï¼ˆä»•å…¥å…ˆã§çµã‚Šè¾¼ã¿ï¼‰
   // ----------------------------
   async function loadHinmokuList(torihikisaki_id) {
     const { data } = await supabase
@@ -133,7 +133,7 @@
       .order("name");
 
     const sel = document.getElementById("hinmoku_select");
-    sel.innerHTML = "<option value=''>‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢</option>";
+    sel.innerHTML = "<option value=''>é¸æŠã—ã¦ãã ã•ã„</option>";
 
     data.forEach(h => {
       sel.innerHTML += `<option value="${h.id}" data-name="${h.name}" data-price="${h.unit_price}" data-tax="${h.tax_rate}">
@@ -152,7 +152,7 @@
   }
 
   // ----------------------------
-  // ‹àŠz©“®ŒvZ
+  // é‡‘é¡è‡ªå‹•è¨ˆç®—
   // ----------------------------
   document.getElementById("qty").oninput =
   document.getElementById("unit_price").oninput = calcAmount;
@@ -164,27 +164,27 @@
   }
 
   // ----------------------------
-  // “o˜^
+  // ç™»éŒ²
   // ----------------------------
   async function insertData() {
     const data = collectForm();
 
     const { error } = await supabase.from("shiire").insert([data]);
     if (error) {
-      alert("“o˜^ƒGƒ‰[: " + error.message);
+      alert("ç™»éŒ²ã‚¨ãƒ©ãƒ¼: " + error.message);
     } else {
-      alert("“o˜^‚µ‚Ü‚µ‚½");
+      alert("ç™»éŒ²ã—ã¾ã—ãŸ");
       clearForm();
       loadList();
     }
   }
 
   // ----------------------------
-  // XV
+  // æ›´æ–°
   // ----------------------------
   async function updateData() {
     if (!currentId) {
-      alert("ˆê——‚©‚ç•ÒW‚·‚és‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢");
+      alert("ä¸€è¦§ã‹ã‚‰ç·¨é›†ã™ã‚‹è¡Œã‚’é¸æŠã—ã¦ãã ã•ã„");
       return;
     }
 
@@ -196,24 +196,24 @@
       .eq("id", currentId);
 
     if (error) {
-      alert("XVƒGƒ‰[: " + error.message);
+      alert("æ›´æ–°ã‚¨ãƒ©ãƒ¼: " + error.message);
     } else {
-      alert("XV‚µ‚Ü‚µ‚½");
+      alert("æ›´æ–°ã—ã¾ã—ãŸ");
       clearForm();
       loadList();
     }
   }
 
   // ----------------------------
-  // íœ
+  // å‰Šé™¤
   // ----------------------------
   async function deleteData() {
     if (!currentId) {
-      alert("ˆê——‚©‚çíœ‚·‚és‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢");
+      alert("ä¸€è¦§ã‹ã‚‰å‰Šé™¤ã™ã‚‹è¡Œã‚’é¸æŠã—ã¦ãã ã•ã„");
       return;
     }
 
-    if (!confirm("–{“–‚Éíœ‚µ‚Ü‚·‚©H")) return;
+    if (!confirm("æœ¬å½“ã«å‰Šé™¤ã—ã¾ã™ã‹ï¼Ÿ")) return;
 
     const { error } = await supabase
       .from("shiire")
@@ -221,16 +221,16 @@
       .eq("id", currentId);
 
     if (error) {
-      alert("íœƒGƒ‰[: " + error.message);
+      alert("å‰Šé™¤ã‚¨ãƒ©ãƒ¼: " + error.message);
     } else {
-      alert("íœ‚µ‚Ü‚µ‚½");
+      alert("å‰Šé™¤ã—ã¾ã—ãŸ");
       clearForm();
       loadList();
     }
   }
 
   // ----------------------------
-  // ˆê——•\¦
+  // ä¸€è¦§è¡¨ç¤º
   // ----------------------------
   async function loadList() {
     const { data, error } = await supabase
@@ -239,11 +239,11 @@
       .order("order_date", { ascending: false });
 
     if (error) {
-      alert("ˆê——æ“¾ƒGƒ‰[: " + error.message);
+      alert("ä¸€è¦§å–å¾—ã‚¨ãƒ©ãƒ¼: " + error.message);
       return;
     }
 
-    let html = "<table><tr><th>d“ü”Ô†</th><th>”­’“ú</th><th>d“üæ</th><th>•i–Ú</th><th>‹àŠz</th><th>‘I‘ğ</th></tr>";
+    let html = "<table><tr><th>ä»•å…¥ç•ªå·</th><th>ç™ºæ³¨æ—¥</th><th>ä»•å…¥å…ˆ</th><th>å“ç›®</th><th>é‡‘é¡</th><th>é¸æŠ</th></tr>";
 
     data.forEach(row => {
       html += `
@@ -253,7 +253,7 @@
           <td>${row.torihikisaki_id}</td>
           <td>${row.hinmoku_name}</td>
           <td>${row.amount}</td>
-          <td><button onclick='selectRow("${row.id}")'>‘I‘ğ</button></td>
+          <td><button onclick='selectRow("${row.id}")'>é¸æŠ</button></td>
         </tr>
       `;
     });
@@ -263,7 +263,7 @@
   }
 
   // ----------------------------
-  // s‘I‘ğ ¨ ƒtƒH[ƒ€‚Ö”½‰f
+  // è¡Œé¸æŠ â†’ ãƒ•ã‚©ãƒ¼ãƒ ã¸åæ˜ 
   // ----------------------------
   async function selectRow(id) {
     currentId = id;
@@ -275,7 +275,7 @@
       .single();
 
     if (error) {
-      alert("ƒf[ƒ^æ“¾ƒGƒ‰[: " + error.message);
+      alert("ãƒ‡ãƒ¼ã‚¿å–å¾—ã‚¨ãƒ©ãƒ¼: " + error.message);
       return;
     }
 
@@ -297,7 +297,7 @@
   }
 
   // ----------------------------
-  // ƒtƒH[ƒ€ ¨ DB€–Ú
+  // ãƒ•ã‚©ãƒ¼ãƒ  â†’ DBé …ç›®
   // ----------------------------
   function collectForm() {
     return {
@@ -316,7 +316,7 @@
   }
 
   // ----------------------------
-  // ƒtƒH[ƒ€ƒNƒŠƒA
+  // ãƒ•ã‚©ãƒ¼ãƒ ã‚¯ãƒªã‚¢
   // ----------------------------
   function clearForm() {
     document.querySelectorAll("input, textarea").forEach(el => {
