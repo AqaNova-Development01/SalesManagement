@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>取引先マスタ入力</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  label { display: block; margin-top: 10px; }
+  input, textarea, select { width: 300px; padding: 5px; }
+  button { margin-top: 15px; padding: 8px 20px; }
+  table { margin-top: 20px; border-collapse: collapse; width: 90%; }
+  th, td { border: 1px solid #ccc; padding: 6px; }
+</style>
+</head>
+<body>
+
+<h2>取引先マスタ入力</h2>
+
+<!-- 入力フォーム -->
+<label>会社名カナ</label>
+<input type="text" id="kana">
+
+<label>会社名</label>
+<input type="text" id="name">
+
+<label>部署</label>
+<input type="text" id="department">
+
+<label>担当者</label>
+<input type="text" id="person">
+
+<label>住所</label>
+<textarea id="address"></textarea>
+
+<label>電話</label>
+<input type="text" id="tel">
+
+<label>FAX</label>
+<input type="text" id="fax">
+
+<label>インボイス番号</label>
+<input type="text" id="invoice_number">
+
+<label>請求書送付先（メール or URL）</label>
+<input type="text" id="billing_email_or_url">
+
+<h3>振込先情報</h3>
+
+<label>銀行名</label>
+<input type="text" id="bank_name">
+
+<label>支店名</label>
+<input type="text" id="bank_branch">
+
+<label>口座番号＋種別</label>
+<input type="text" id="bank_account">
+
+<label>口座名義</label>
+<input type="text" id="account_holder">
+
+<!-- 操作ボタン -->
+<br>
+<button onclick="insertData()">登録</button>
+<button onclick="updateData()">更新</button>
+<button id="deleteButton" onclick="deleteData()">削除</button>
+<button onclick="loadList()">一覧表示</button>
+
+<!-- 一覧表示 -->
+<div id="listArea"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+
+// ★ Supabase 設定（あなたの値に変更）
+const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ★ 自社レコードの固定UUID（削除禁止）
+const SELF_ID = "00000000-0000-0000-0000-000000000001";
+
+// 現在選択中のID
+let currentId = null;
+
+// ----------------------------
+// 登録
+// ----------------------------
+async function insertData() {
+  const data = collectForm();
+
+  const { error } = await supabase.from("torihikisaki").insert([data]);
+  if (error) {
+    alert("登録エラー: " + error.message);
+  } else {
+    alert("登録しました");
+    clearForm();
+    loadList();
+  }
+}
+
+// ----------------------------
+// 更新
+// ----------------------------
+async function updateData() {
+  if (!currentId) {
+    alert("一覧から編集する行を選択してください");
+    return;
+  }
+
+  const data = collectForm();
+
+  const { error } = await supabase
+    .from("torihikisaki")
+    .update(data)
+    .eq("id", currentId);
+
+  if (error) {
+    alert("更新エラー: " + error.message);
+  } else {
+    alert("更新しました");
+    clearForm();
+    loadList();
+  }
+}
+
+// ----------------------------
+// 削除（自社は削除不可）
+// ----------------------------
+async function deleteData() {
+  if (!currentId) {
+    alert("一覧から削除する行を選択してください");
+    return;
+  }
+
+  if (currentId === SELF_ID) {
+    alert("自社レコードは削除できません");
+    return;
+  }
+
+  if (!confirm("本当に削除しますか？")) return;
+
+  const { error } = await supabase
+    .from("torihikisaki")
+    .delete()
+    .eq("id", currentId);
+
+  if (error) {
+    alert("削除エラー: " + error.message);
+  } else {
+    alert("削除しました");
+    clearForm();
+    loadList();
+  }
+}
+
+// ----------------------------
+// 一覧表示
+// ----------------------------
+async function loadList() {
+  const { data, error } = await supabase
+    .from("torihikisaki")
+    .select("*")
+    .order("kana");
+
+  if (error) {
+    alert("一覧取得エラー: " + error.message);
+    return;
+  }
+
+  let html = "<table><tr><th>カナ</th><th>会社名</th><th>担当者</th><th>選択</th></tr>";
+
+  data.forEach(row => {
+    html += `
+      <tr>
+        <td>${row.kana || ""}</td>
+        <td>${row.name}</td>
+        <td>${row.person || ""}</td>
+        <td><button onclick='selectRow("${row.id}")'>選択</button></td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+  document.getElementById("listArea").innerHTML = html;
+}
+
+// ----------------------------
+// 行選択 → フォームへ反映
+// ----------------------------
+async function selectRow(id) {
+  currentId = id;
+
+  const { data, error } = await supabase
+    .from("torihikisaki")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    alert("データ取得エラー: " + error.message);
+    return;
+  }
+
+  document.getElementById("kana").value = data.kana || "";
+  document.getElementById("name").value = data.name || "";
+  document.getElementById("department").value = data.department || "";
+  document.getElementById("person").value = data.person || "";
+  document.getElementById("address").value = data.address || "";
+  document.getElementById("tel").value = data.tel || "";
+  document.getElementById("fax").value = data.fax || "";
+  document.getElementById("invoice_number").value = data.invoice_number || "";
+  document.getElementById("billing_email_or_url").value = data.billing_email_or_url || "";
+
+  document.getElementById("bank_name").value = data.bank_name || "";
+  document.getElementById("bank_branch").value = data.bank_branch || "";
+  document.getElementById("bank_account").value = data.bank_account || "";
+  document.getElementById("account_holder").value = data.account_holder || "";
