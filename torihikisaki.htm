@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>æˆøæƒ}ƒXƒ^“ü—Í</title>
+<title>å–å¼•å…ˆãƒã‚¹ã‚¿</title>
 <style>
   body { font-family: sans-serif; margin: 20px; }
   label { display: block; margin-top: 10px; }
@@ -14,96 +14,107 @@
 </head>
 <body>
 
-<h2>æˆøæƒ}ƒXƒ^“ü—Í</h2>
+<h2>å–å¼•å…ˆãƒã‚¹ã‚¿</h2>
 
-<!-- “ü—ÍƒtƒH[ƒ€ -->
-<label>‰ïĞ–¼ƒJƒi</label>
+<label>å–å¼•å…ˆã‚«ãƒŠ</label>
 <input type="text" id="kana">
 
-<label>‰ïĞ–¼</label>
+<label>å–å¼•å…ˆå</label>
 <input type="text" id="name">
 
-<label>•”</label>
+<label>éƒ¨ç½²</label>
 <input type="text" id="department">
 
-<label>’S“–Ò</label>
+<label>æ‹…å½“è€…</label>
 <input type="text" id="person">
 
-<label>ZŠ</label>
+<label>ä½æ‰€</label>
 <textarea id="address"></textarea>
 
-<label>“d˜b</label>
+<label>é›»è©±</label>
 <input type="text" id="tel">
 
 <label>FAX</label>
 <input type="text" id="fax">
 
-<label>ƒCƒ“ƒ{ƒCƒX”Ô†</label>
+<label>ã‚¤ãƒ³ãƒœã‚¤ã‚¹ç•ªå·</label>
 <input type="text" id="invoice_number">
 
-<label>¿‹‘‘—•tæiƒ[ƒ‹ or URLj</label>
+<label>è«‹æ±‚æ›¸é€ä»˜å…ˆï¼ˆãƒ¡ãƒ¼ãƒ« or URLï¼‰</label>
 <input type="text" id="billing_email_or_url">
 
-<h3>Uæî•ñ</h3>
+<h3>æŒ¯è¾¼å…ˆæƒ…å ±</h3>
 
-<label>‹âs–¼</label>
+<label>éŠ€è¡Œå</label>
 <input type="text" id="bank_name">
 
-<label>x“X–¼</label>
+<label>æ”¯åº—å</label>
 <input type="text" id="bank_branch">
 
-<label>ŒûÀ”Ô†{í•Ê</label>
+<label>å£åº§ç•ªå·ï¼ˆãƒã‚¤ãƒ•ãƒ³ãªã—ï¼‰</label>
 <input type="text" id="bank_account">
 
-<label>ŒûÀ–¼‹`</label>
+<label>å£åº§åç¾©</label>
 <input type="text" id="account_holder">
 
-<!-- ‘€ìƒ{ƒ^ƒ“ -->
 <br>
-<button onclick="insertData()">“o˜^</button>
-<button onclick="updateData()">XV</button>
-<button id="deleteButton" onclick="deleteData()">íœ</button>
-<button onclick="loadList()">ˆê——•\¦</button>
+<button onclick="insertData()">ç™»éŒ²</button>
+<button onclick="updateData()">æ›´æ–°</button>
+<button id="deleteButton" onclick="deleteData()">å‰Šé™¤</button>
+<button onclick="loadList()">ä¸€è¦§è¡¨ç¤º</button>
 
-<!-- ˆê——•\¦ -->
 <div id="listArea"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 
-// š Supabase İ’èi‚ ‚È‚½‚Ì’l‚É•ÏXj
 const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// š ©ĞƒŒƒR[ƒh‚ÌŒÅ’èUUIDiíœ‹Ö~j
 const SELF_ID = "00000000-0000-0000-0000-000000000001";
 
-// Œ»İ‘I‘ğ’†‚ÌID
 let currentId = null;
 
-// ----------------------------
-// “o˜^
-// ----------------------------
+function collectForm() {
+  return {
+    kana: document.getElementById("kana").value,
+    name: document.getElementById("name").value,
+    department: document.getElementById("department").value,
+    person: document.getElementById("person").value,
+    address: document.getElementById("address").value,
+    tel: document.getElementById("tel").value,
+    fax: document.getElementById("fax").value,
+    invoice_number: document.getElementById("invoice_number").value,
+    billing_email_or_url: document.getElementById("billing_email_or_url").value,
+    bank_name: document.getElementById("bank_name").value,
+    bank_branch: document.getElementById("bank_branch").value,
+    bank_account: document.getElementById("bank_account").value,
+    account_holder: document.getElementById("account_holder").value
+  };
+}
+
+function clearForm() {
+  document.querySelectorAll("input, textarea").forEach(el => el.value = "");
+  currentId = null;
+}
+
 async function insertData() {
   const data = collectForm();
 
   const { error } = await supabase.from("torihikisaki").insert([data]);
   if (error) {
-    alert("“o˜^ƒGƒ‰[: " + error.message);
+    alert("ç™»éŒ²ã‚¨ãƒ©ãƒ¼: " + error.message);
   } else {
-    alert("“o˜^‚µ‚Ü‚µ‚½");
+    alert("ç™»éŒ²ã—ã¾ã—ãŸ");
     clearForm();
     loadList();
   }
 }
 
-// ----------------------------
-// XV
-// ----------------------------
 async function updateData() {
   if (!currentId) {
-    alert("ˆê——‚©‚ç•ÒW‚·‚és‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢");
+    alert("ä¸€è¦§ã‹ã‚‰ç·¨é›†å¯¾è±¡ã‚’é¸æŠã—ã¦ãã ã•ã„");
     return;
   }
 
@@ -115,29 +126,26 @@ async function updateData() {
     .eq("id", currentId);
 
   if (error) {
-    alert("XVƒGƒ‰[: " + error.message);
+    alert("æ›´æ–°ã‚¨ãƒ©ãƒ¼: " + error.message);
   } else {
-    alert("XV‚µ‚Ü‚µ‚½");
+    alert("æ›´æ–°ã—ã¾ã—ãŸ");
     clearForm();
     loadList();
   }
 }
 
-// ----------------------------
-// íœi©Ğ‚Ííœ•s‰Âj
-// ----------------------------
 async function deleteData() {
   if (!currentId) {
-    alert("ˆê——‚©‚çíœ‚·‚és‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢");
+    alert("ä¸€è¦§ã‹ã‚‰å‰Šé™¤å¯¾è±¡ã‚’é¸æŠã—ã¦ãã ã•ã„");
     return;
   }
 
   if (currentId === SELF_ID) {
-    alert("©ĞƒŒƒR[ƒh‚Ííœ‚Å‚«‚Ü‚¹‚ñ");
+    alert("ã“ã®ãƒ¬ã‚³ãƒ¼ãƒ‰ã¯å‰Šé™¤ã§ãã¾ã›ã‚“");
     return;
   }
 
-  if (!confirm("–{“–‚Éíœ‚µ‚Ü‚·‚©H")) return;
+  if (!confirm("æœ¬å½“ã«å‰Šé™¤ã—ã¾ã™ã‹ï¼Ÿ")) return;
 
   const { error } = await supabase
     .from("torihikisaki")
@@ -145,17 +153,14 @@ async function deleteData() {
     .eq("id", currentId);
 
   if (error) {
-    alert("íœƒGƒ‰[: " + error.message);
+    alert("å‰Šé™¤ã‚¨ãƒ©ãƒ¼: " + error.message);
   } else {
-    alert("íœ‚µ‚Ü‚µ‚½");
+    alert("å‰Šé™¤ã—ã¾ã—ãŸ");
     clearForm();
     loadList();
   }
 }
 
-// ----------------------------
-// ˆê——•\¦
-// ----------------------------
 async function loadList() {
   const { data, error } = await supabase
     .from("torihikisaki")
@@ -163,11 +168,11 @@ async function loadList() {
     .order("kana");
 
   if (error) {
-    alert("ˆê——æ“¾ƒGƒ‰[: " + error.message);
+    alert("ä¸€è¦§å–å¾—ã‚¨ãƒ©ãƒ¼: " + error.message);
     return;
   }
 
-  let html = "<table><tr><th>ƒJƒi</th><th>‰ïĞ–¼</th><th>’S“–Ò</th><th>‘I‘ğ</th></tr>";
+  let html = "<table><tr><th>ã‚«ãƒŠ</th><th>å–å¼•å…ˆå</th><th>æ‹…å½“è€…</th><th>é¸æŠ</th></tr>";
 
   data.forEach(row => {
     html += `
@@ -175,7 +180,7 @@ async function loadList() {
         <td>${row.kana || ""}</td>
         <td>${row.name}</td>
         <td>${row.person || ""}</td>
-        <td><button onclick='selectRow("${row.id}")'>‘I‘ğ</button></td>
+        <td><button onclick='selectRow("${row.id}")'>é¸æŠ</button></td>
       </tr>
     `;
   });
@@ -184,9 +189,6 @@ async function loadList() {
   document.getElementById("listArea").innerHTML = html;
 }
 
-// ----------------------------
-// s‘I‘ğ ¨ ƒtƒH[ƒ€‚Ö”½‰f
-// ----------------------------
 async function selectRow(id) {
   currentId = id;
 
@@ -197,7 +199,7 @@ async function selectRow(id) {
     .single();
 
   if (error) {
-    alert("ƒf[ƒ^æ“¾ƒGƒ‰[: " + error.message);
+    alert("ãƒ‡ãƒ¼ã‚¿å–å¾—ã‚¨ãƒ©ãƒ¼: " + error.message);
     return;
   }
 
@@ -210,8 +212,13 @@ async function selectRow(id) {
   document.getElementById("fax").value = data.fax || "";
   document.getElementById("invoice_number").value = data.invoice_number || "";
   document.getElementById("billing_email_or_url").value = data.billing_email_or_url || "";
-
   document.getElementById("bank_name").value = data.bank_name || "";
   document.getElementById("bank_branch").value = data.bank_branch || "";
   document.getElementById("bank_account").value = data.bank_account || "";
   document.getElementById("account_holder").value = data.account_holder || "";
+}
+
+</script>
+
+</body>
+</html>
