@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>入金入力</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  label { display: block; margin-top: 10px; }
+  input, select, textarea { width: 300px; padding: 5px; }
+  button { margin-top: 15px; padding: 8px 20px; }
+  table { margin-top: 20px; border-collapse: collapse; width: 95%; }
+  th, td { border: 1px solid #ccc; padding: 6px; }
+</style>
+</head>
+<body>
+
+<h2>アクア・ノヴァ 販売管理　【 入金入力 】</h2>
+
+<!-- 入金番号（UUID） -->
+<label>入金番号（自動採番）</label>
+<input type="text" id="id" readonly style="background:#eee;">
+
+<!-- 入金日 -->
+<label>入金日</label>
+<input type="date" id="nyukin_date">
+
+<!-- 取引先 -->
+<h3>取引先</h3>
+
+<label>取引先選択</label>
+<select id="torihikisaki_select"></select>
+
+<label>取引先コード</label>
+<input type="text" id="torihikisaki_id" readonly style="background:#eee;">
+
+<label>取引先名</label>
+<input type="text" id="torihikisaki_name" readonly style="background:#eee;">
+
+<!-- 入金方法 -->
+<label>入金方法</label>
+<select id="method">
+  <option value="現金">現金</option>
+  <option value="銀行振込">銀行振込</option>
+  <option value="手形">手形</option>
+  <option value="相殺">相殺</option>
+  <option value="その他">その他</option>
+</select>
+
+<!-- 入金額 -->
+<label>入金額</label>
+<input type="number" id="amount" step="1">
+
+<!-- 備考 -->
+<label>備考</label>
+<textarea id="note"></textarea>
+
+<!-- 操作ボタン -->
+<br>
+<button onclick="insertData()">登録</button>
+<button onclick="updateData()">更新</button>
+<button onclick="deleteData()">削除</button>
+<button onclick="loadList()">一覧表示</button>
+
+<!-- 一覧表示 -->
+<div id="listArea"></div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentId = null;
+
+  // ----------------------------
+  // 初期ロード
+  // ----------------------------
+  window.onload = async () => {
+    await loadTorihikisakiList();
+
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("nyukin_date").value = today;
+  };
+
+  // ----------------------------
+  // 取引先一覧ロード
+  // ----------------------------
+  async function loadTorihikisakiList() {
+    const { data } = await supabase.from("torihikisaki").select("*").order("kana");
+    const sel = document.getElementById("torihikisaki_select");
+    sel.innerHTML = "<option value=''>選択してください</option>";
+
+    data.forEach(t => {
+      sel.innerHTML += `<option value="${t.id}" data-name="${t.name}">${t.kana} / ${t.name}</option>`;
+    });
+
+    sel.onchange = () => {
+      const id = sel.value;
+      const name = sel.options[sel.selectedIndex].dataset.name;
+      document.getElementById("torihikisaki_id").value = id;
+      document.getElementById("torihikisaki_name").value = name;
+    };
+  }
+
+  // ----------------------------
+  // 登録
+  // ----------------------------
+  async function insertData() {
+    const data = collectForm();
+
+    const { error } = await supabase.from("nyukin").insert([data]);
+    if (error) {
+      alert("登録エラー: " + error.message);
+    } else {
+      alert("登録しました");
+      clearForm();
+      loadList();
+    }
+  }
+
+  // ----------------------------
+  // 更新
+  // ----------------------------
+  async function updateData() {
+    if (!currentId) {
+      alert("一覧から編集する行を選択してください");
+      return;
+    }
+
+    const data = collectForm();
+
+    const { error } = await supabase
+      .from("nyukin")
+      .update(data)
+      .eq("id", currentId);
+
+    if (error) {
+      alert("更新エラー: " + error.message);
+    } else {
+      alert("更新しました");
+      clearForm();
+      loadList();
+    }
+  }
+
+  // ----------------------------
+  // 削除
+  // ----------------------------
+  async function deleteData() {
+    if (!currentId) {
+      alert("一覧から削除する行を選択してください");
+      return;
+    }
+
+    if (!confirm("本当に削除しますか？")) return;
+
+    const { error } = await supabase
+      .from("nyukin")
+      .delete()
+      .eq("id", currentId);
+
+    if (error) {
+      alert("削除エラー: " + error.message);
+    } else {
+      alert("削除しました");
+      clearForm();
+      loadList();
+    }
+  }
+
+  // ----------------------------
+  // 一覧表示
+  // ----------------------------
+  async function loadList() {
+    const { data, error } = await supabase
+      .from("nyukin")
+      .select("*")
+      .order("nyukin_date", { ascending: false });
+
+    if (error) {
+      alert("一覧取得エラー: " + error.message);
+      return;
+    }
+
+    let html = "<table><tr><th>入金番号</th><th>入金日</th><th>取引先</th><th>金額</th><th>方法</th><th>選択</th></tr>";
+
+    data.forEach(row => {
+      html += `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.nyukin_date}</td>
+          <td>${row.torihikisaki_id}</td>
+          <td>${row.amount}</td>
+          <td>${row.method}</td>
+          <td><button onclick='selectRow("${row.id}")'>選択</button></td>
+        </tr>
+      `;
+    });
+
+    html += "</table>";
+    document.getElementById("listArea").innerHTML = html;
+  }
+
+  // ----------------------------
+  // 行選択 → フォームへ反映
+  // ----------------------------
+  async function selectRow(id) {
+    currentId = id;
+
+    const { data, error } = await supabase
+      .from("nyukin")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      alert("データ取得エラー: " + error.message);
+      return;
+    }
+
+    document.getElementById("id").value = data.id;
+    document.getElementById("nyukin_date").value = data.nyukin_date;
+
+    document.getElementById("torihikisaki_id").value = data.torihikisaki_id;
+    document.getElementById("torihikisaki_name").value = "";
+
+    document.getElementById("method").value = data.method;
+    document.getElementById("amount").value = data.amount;
+    document.getElementById("note").value = data.note;
+  }
+
+  // ----------------------------
+  // フォーム → DB項目
+  // ----------------------------
+  function collectForm() {
+    return {
+      nyukin_date: document.getElementById("nyukin_date").value,
+      torihikisaki_id: document.getElementById("torihikisaki_id").value,
+      method: document.getElementById("method").value,
+      amount: Number(document.getElementById("amount").value),
+      note: document.getElementById("note").value
+    };
+  }
+
+  // ----------------------------
+  // フォームクリア
+  // ----------------------------
+  function clearForm() {
+    document.querySelectorAll("input, textarea").forEach(el => {
+      if (el.type !== "date" && el.id !== "id") el.value = "";
+    });
+    currentId = null;
+  }
+
+</script>
+
+</body>
+</html>
