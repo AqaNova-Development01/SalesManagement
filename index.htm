@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>販売管理システム メニュー</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // Supabase 設定
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ログイン済みチェック
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+      }
+    }
+    checkLogin();
+
+    // ログアウト処理
+    async function logout() {
+      await supabase.auth.signOut();
+      window.location.href = "login.html";
+    }
+    window.logout = logout;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 40px; max-width: 600px; margin: auto; }
+    h1 { margin-bottom: 30px; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 12px 0; }
+    a { font-size: 18px; text-decoration: none; color: #0077cc; }
+    a:hover { text-decoration: underline; }
+    button { margin-top: 30px; padding: 10px 20px; }
+  </style>
+</head>
+
+<body>
+
+  <h1>販売管理システム メニュー</h1>
+
+  <ul>
+    <li><a href="torihikisaki.html">取引先マスター</a></li>
+    <li><a href="hinmoku.html">品目マスター</a></li>
+    <li><a href="document.html?type=quotation">見積入力</a></li>
+    <li><a href="document.html?type=sales">売上入力</a></li>
+    <li><a href="document.html?type=purchase">仕入入力</a></li>
+    <li><a href="nyukin.html">入金入力</a></li>
+    <li><a href="shukkin.html">出金入力</a></li>
+    <li><a href="list_documents.html">伝票一覧</a></li>
+    <li><a href="list_nyukin.html">入金一覧</a></li>
+    <li><a href="list_shukkin.html">出金一覧</a></li>
+  </ul>
+
+  <button onclick="logout()">ログアウト</button>
+
+</body>
+</html>
