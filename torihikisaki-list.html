@@ -15,27 +15,26 @@
 
     async function loadList() {
       const { data, error } = await supabase
-        .from("customers")
+        .from("torihikisaki")
         .select("*")
         .eq("company_id", COMPANY_ID)
-        .order("customer_code");
+        .order("kana");
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
         return;
       }
 
-      let html = "<table><tr><th>コード</th><th>名称</th><th>住所</th><th>選択</th></tr>";
+      let html = "<table><tr><th>コード</th><th>カナ</th><th>会社名</th><th>担当者</th><th>選択</th></tr>";
 
       data.forEach(row => {
         html += `
           <tr>
-            <td>${row.customer_code}</td>
-            <td>${row.customer_name}</td>
-            <td>${row.address || ""}</td>
-            <td>
-              <button onclick="selectCustomer('${row.customer_code}')">選択</button>
-            </td>
+            <td>${row.code}</td>
+            <td>${row.kana || ""}</td>
+            <td>${row.name}</td>
+            <td>${row.person || ""}</td>
+            <td><button onclick="selectRow('${row.code}')">選択</button></td>
           </tr>
         `;
       });
@@ -44,7 +43,7 @@
       document.getElementById("listArea").innerHTML = html;
     }
 
-    window.selectCustomer = function(code) {
+    window.selectRow = function(code) {
       window.location.href =
         "https://aqanova-development01.github.io/SalesManagement/torihikisaki.html?code=" + code;
     };
