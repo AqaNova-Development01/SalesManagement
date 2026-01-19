@@ -13,7 +13,7 @@
     );
 
     const params = new URLSearchParams(window.location.search);
-    const from = params.get("from"); // hinmoku から呼ばれたか判定
+    const from = params.get("from");
 
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
@@ -32,14 +32,23 @@
         `);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
         return;
       }
 
-      let html = "<table><tr><th>コード</th><th>カナ</th><th>会社名</th><th>担当者</th><th>選択</th></tr>";
+      let html = `
+        <table>
+          <tr>
+            <th>コード</th>
+            <th>カナ</th>
+            <th>会社名</th>
+            <th>担当者</th>
+            <th>選択</th>
+          </tr>
+      `;
 
       data.forEach(row => {
         html += `
@@ -59,13 +68,9 @@
 
     window.selectRow = function(id) {
       if (from === "hinmoku") {
-        // 品目画面に戻す
-        window.location.href =
-          "https://aqanova-development01.github.io/SalesManagement/hinmoku.html?torihikisaki_id=" + id;
+        window.location.href = "hinmoku.html?torihikisaki_id=" + id;
       } else {
-        // 通常の取引先編集
-        window.location.href =
-          "https://aqanova-development01.github.io/SalesManagement/torihikisaki.html?id=" + id;
+        window.location.href = "torihikisaki.html?id=" + id;
       }
     };
 
@@ -90,9 +95,7 @@
   <div id="listArea"></div>
 
   <br>
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/torihikisaki.html'">
-    新規作成へ戻る
-  </button>
+  <button onclick="location.href='torihikisaki.html'">新規作成へ</button>
 
 </body>
 </html>
