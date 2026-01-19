@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>æˆøæˆê——</title>
+  <title>å–å¼•å…ˆä¸€è¦§</title>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,11 +21,11 @@
         .order("customer_code");
 
       if (error) {
-        alert("ˆê——æ“¾ƒGƒ‰[: " + error.message);
+        alert("ä¸€è¦§å–å¾—ã‚¨ãƒ©ãƒ¼: " + error.message);
         return;
       }
 
-      let html = "<table><tr><th>ƒR[ƒh</th><th>–¼Ì</th><th>ZŠ</th><th>‘I‘ğ</th></tr>";
+      let html = "<table><tr><th>ã‚³ãƒ¼ãƒ‰</th><th>åç§°</th><th>ä½æ‰€</th><th>é¸æŠ</th></tr>";
 
       data.forEach(row => {
         html += `
@@ -34,7 +34,7 @@
             <td>${row.customer_name}</td>
             <td>${row.address || ""}</td>
             <td>
-              <button onclick="selectCustomer('${row.customer_code}')">‘I‘ğ</button>
+              <button onclick="selectCustomer('${row.customer_code}')">é¸æŠ</button>
             </td>
           </tr>
         `;
@@ -62,13 +62,13 @@
 
 <body>
 
-  <h2>æˆøæˆê——</h2>
+  <h2>å–å¼•å…ˆä¸€è¦§</h2>
 
   <div id="listArea"></div>
 
   <br>
   <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/torihikisaki.html'">
-    V‹Kì¬‚Ö–ß‚é
+    æ–°è¦ä½œæˆã¸æˆ»ã‚‹
   </button>
 
 </body>
