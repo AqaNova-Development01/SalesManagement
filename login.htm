@@ -1,60 +1,51 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>ログイン</title>
-<style>
-  body { font-family: sans-serif; margin: 40px; }
-  .box { width: 300px; margin: auto; }
-  input { width: 100%; padding: 8px; margin-top: 10px; }
-  button { width: 100%; padding: 10px; margin-top: 20px; }
-  #msg { color: red; margin-top: 15px; }
-</style>
+  <meta charset="UTF-8">
+  <title>ログイン</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; padding: 40px; max-width: 400px; margin: auto; }
+    input { width: 100%; padding: 10px; margin: 10px 0; }
+    button { width: 100%; padding: 10px; }
+    #error { color: red; margin-top: 10px; }
+  </style>
 </head>
 <body>
 
-<h2>アクア・ノヴァ 販売管理 ログイン</h2>
+  <h2>ログイン</h2>
 
-<div class="box">
-  <input id="login_id" placeholder="ログインID">
+  <input id="email" type="email" placeholder="メールアドレス">
   <input id="password" type="password" placeholder="パスワード">
+
   <button onclick="login()">ログイン</button>
-  <div id="msg"></div>
-</div>
 
-<script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  <div id="error"></div>
 
-  const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script>
+    const supabase = supabase.createClient(
+      "https://YOUR-PROJECT.supabase.co",
+      "YOUR-PUBLIC-ANON-KEY"
+    );
 
-  async function login() {
-    const id = document.getElementById("login_id").value;
-    const pw = document.getElementById("password").value;
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("login_id", id)
-      .eq("password", pw)
-      .single();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (error || !data) {
-      document.getElementById("msg").innerText = "IDまたはパスワードが違います";
-      return;
+      if (error) {
+        document.getElementById("error").textContent = "ログインに失敗しました：" + error.message;
+        return;
+      }
+
+      // ログイン成功 → メイン画面へ
+      window.location.href = "index.html";
     }
-
-    // ログイン成功 → ローカルストレージに保存
-    localStorage.setItem("user", JSON.stringify(data));
-
-    // メニュー画面へ遷移
-    window.location.href = "menu.htm";
-  }
-
-  // HTML から呼べるように公開
-  window.login = login;
-</script>
+  </script>
 
 </body>
 </html>
