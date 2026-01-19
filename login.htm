@@ -1,60 +1,60 @@
-!DOCTYPE html
-html lang=ja
-head
-meta charset=UTF-8
-titleログインtitle
-style
-  body { font-family sans-serif; margin 40px; }
-  .box { width 300px; margin auto; }
-  input { width 100%; padding 8px; margin-top 10px; }
-  button { width 100%; padding 10px; margin-top 20px; }
-  #msg { color red; margin-top 15px; }
-style
-head
-body
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ログイン</title>
+<style>
+  body { font-family: sans-serif; margin: 40px; }
+  .box { width: 300px; margin: auto; }
+  input { width: 100%; padding: 8px; margin-top: 10px; }
+  button { width: 100%; padding: 10px; margin-top: 20px; }
+  #msg { color: red; margin-top: 15px; }
+</style>
+</head>
+<body>
 
-h2アクア・ノヴァ 販売管理 ログインh2
+<h2>アクア・ノヴァ 販売管理 ログイン</h2>
 
-div class=box
-  input id=login_id placeholder=ログインID
-  input id=password type=password placeholder=パスワード
-  button onclick=login()ログインbutton
-  div id=msgdiv
-div
+<div class="box">
+  <input id="login_id" placeholder="ログインID">
+  <input id="password" type="password" placeholder="パスワード">
+  <button onclick="login()">ログイン</button>
+  <div id="msg"></div>
+</div>
 
-script type=module
-  import { createClient } from httpsesm.sh@supabasesupabase-js@2;
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-  const SUPABASE_URL = httpsomzcbfjtwyygvvgxsiov.supabase.co;
-  const SUPABASE_ANON_KEY = sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0;
+  const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   async function login() {
-    const id = document.getElementById(login_id).value;
-    const pw = document.getElementById(password).value;
+    const id = document.getElementById("login_id").value;
+    const pw = document.getElementById("password").value;
 
     const { data, error } = await supabase
-      .from(users)
-      .select()
-      .eq(login_id, id)
-      .eq(password, pw)
+      .from("users")
+      .select("*")
+      .eq("login_id", id)
+      .eq("password", pw)
       .single();
 
-    if (error  !data) {
-      document.getElementById(msg).innerText = IDまたはパスワードが違います;
+    if (error || !data) {
+      document.getElementById("msg").innerText = "IDまたはパスワードが違います";
       return;
     }
 
-     ログイン成功 → ローカルストレージに保存
-    localStorage.setItem(user, JSON.stringify(data));
+    // ログイン成功 → ローカルストレージに保存
+    localStorage.setItem("user", JSON.stringify(data));
 
-     メニュー画面へ遷移
-    window.location.href = menu.htm;
+    // メニュー画面へ遷移
+    window.location.href = "menu.htm";
   }
 
-   HTML から呼べるように公開
+  // HTML から呼べるように公開
   window.login = login;
-script
+</script>
 
-body
-html
+</body>
+</html>
