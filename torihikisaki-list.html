@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>取引先一覧</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const COMPANY_ID = "TK000000";
+
+    async function loadList() {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("company_id", COMPANY_ID)
+        .order("customer_code");
+
+      if (error) {
+        alert("一覧取得エラー: " + error.message);
+        return;
+      }
+
+      let html = "<table><tr><th>コード</th><th>名称</th><th>住所</th><th>選択</th></tr>";
+
+      data.forEach(row => {
+        html += `
+          <tr>
+            <td>${row.customer_code}</td>
+            <td>${row.customer_name}</td>
+            <td>${row.address || ""}</td>
+            <td>
+              <button onclick="selectCustomer('${row.customer_code}')">選択</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+      document.getElementById("listArea").innerHTML = html;
+    }
+
+    window.selectCustomer = function(code) {
+      window.location.href =
+        "https://aqanova-development01.github.io/SalesManagement/torihikisaki.html?code=" + code;
+    };
+
+    loadList();
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    button { padding: 6px 12px; }
+  </style>
+</head>
+
+<body>
+
+  <h2>取引先一覧</h2>
+
+  <div id="listArea"></div>
+
+  <br>
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/torihikisaki.html'">
+    新規作成へ戻る
+  </button>
+
+</body>
+</html>
