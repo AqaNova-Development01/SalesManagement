@@ -176,6 +176,19 @@
     }
 
     // ----------------------------
+    // 品目一覧へ（取引先ID付き）
+    // ----------------------------
+    window.goList = function() {
+      const tid = document.getElementById("torihikisaki_id").value;
+
+      if (tid) {
+        location.href = `hinmoku-list.html?torihikisaki_id=${tid}`;
+      } else {
+        location.href = "hinmoku-list.html";
+      }
+    };
+
+    // ----------------------------
     // 取引先一覧を開く
     // ----------------------------
     window.openTorihikisakiList = function() {
@@ -249,7 +262,7 @@
   <button id="btnUpdate" onclick="updateData()">更新</button>
   <button id="btnDelete" onclick="deleteData()">削除</button>
 
-  <button onclick="location.href='hinmoku-list.html'">一覧へ</button>
+  <button onclick="goList()">一覧へ</button>
   <button onclick="location.href='index.html'">メニューへ</button>
 
 </body>
