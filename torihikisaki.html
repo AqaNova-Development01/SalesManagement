@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>アクア・ノヴァ 販売管理システム｜取引先マスタ</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const COMPANY_ID = "TK000000"; // 自社ID（固定）
+
+    // ログインチェック
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href =
+          "https://aqanova-development01.github.io/SalesManagement/login.html";
+      }
+    }
+
+    // 採番（正式仕様：numbering(company_id, doc_type, last_no)）
+    async function generateCustomerCode() {
+      // 1. 現在の last_no を取得
+      const { data, error } = await supabase
+        .from("numbering")
+        .select("last_no")
+        .eq("company_id", COMPANY_ID)
+        .eq("doc_type", "customer")
+        .single();
+
+      if (error) {
+        console.error(error);
+        return null;
+      }
+
+      const nextNo = data.last_no + 1;
+
+      // 2. last_no を更新
+      await supabase
+        .from("numbering")
+        .update({ last_no: nextNo })
+        .eq("company_id", COMPANY_ID)
+        .eq("doc_type", "customer");
+
+      // 3. コード生成（正式仕様：C + 6桁）
+      return "C" + String(nextNo).padStart(6, "0");
+    }
+
+    // 登録
+    async function registerCustomer() {
+      const customer_code = await generateCustomerCode();
+
+      const { error } = await supabase.from("customers").insert({
+        company_id: COMPANY_ID,
+        customer_code,
+        customer_name: document.getElementById("customer_name").value,
+        postal_code: document.getElementById("postal_code").value,
+        address: document.getElementById("address").value,
+        phone: document.getElementById("phone").value
+      });
+
+      document.getElementById("msg").textContent =
+        error ? "登録に失敗：" + error.message : "登録しました（コード：" + customer_code + "）";
+    }
+
+    // 更新
+    async function updateCustomer() {
+      const code = document.getElementById("customer_code").value;
+
+      const { error } = await supabase
+        .from("customers")
+        .update({
+          customer_name: document.getElementById("customer_name").value,
+          postal_code: document.getElementById("postal_code").value,
+          address: document.getElementById("address").value,
+          phone: document.getElementById("phone").value
+        })
+        .eq("company_id", COMPANY_ID)
+        .eq("customer_code", code);
+
+      document.getElementById("msg").textContent =
+        error ? "更新に失敗：" + error.message : "更新しました。";
+    }
+
+    // 削除
+    async function deleteCustomer() {
+      const code = document.getElementById("customer_code").value;
+
+      const { error } = await supabase
+        .from("customers")
+        .delete()
+        .eq("company_id", COMPANY_ID)
+        .eq("customer_code", code);
+
+      document.getElementById("msg").textContent =
+        error ? "削除に失敗：" + error.message : "削除しました。";
+    }
+
+    // 一覧へ
+    function goList() {
+      window.location.href =
+        "https://aqanova-development01.github.io/SalesManagement/customers-list.html";
+    }
+
+    // メニューへ
+    function goMenu() {
+      window.location.href =
+        "https://aqanova-development01.github.io/SalesManagement/index.html";
+    }
+
+    window.registerCustomer = registerCustomer;
+    window.updateCustomer = updateCustomer;
+    window.deleteCustomer = deleteCustomer;
+    window.goList = goList;
+    window.goMenu = goMenu;
+
+    checkLogin();
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 40px; max-width: 500px; margin: auto; }
+    input { width: 100%; padding: 10px; margin: 10px 0; }
+    button { width: 100%; padding: 12px; margin: 10px 0; }
+    #msg { margin-top: 15px; color: #d00; }
+  </style>
+</head>
+
+<body>
+
+  <h2>アクア・ノヴァ 販売管理システム｜取引先マスタ</h2>
+
+  <input id="customer_code" type="text" placeholder="取引先コード（更新・削除時のみ）">
+  <input id="customer_name" type="text" placeholder="取引先名">
+  <input id="postal_code" type="text" placeholder="郵便番号">
+  <input id="address" type="text" placeholder="住所">
+  <input id="phone" type="text" placeholder="電話番号">
+
+  <button onclick="registerCustomer()">登録（自動採番）</button>
+  <button onclick="updateCustomer()">更新</button>
+  <button onclick="deleteCustomer()">削除</button>
+  <button onclick="goList()">一覧</button>
+
+  <button onclick="goMenu()">メニューに戻る</button>
+
+  <div id="msg"></div>
+
+</body>
+</html>
