@@ -23,14 +23,14 @@
         .select("*, torihikisaki:torihikisaki_id(name)")
         .order("name");
 
-      // 取引先IDでの自動絞り込み
+      // ★ 取引先IDで自動絞り込み（品目画面から来た場合）
       if (torihikisaki_id) {
         query = query.eq("torihikisaki_id", torihikisaki_id);
       }
 
-      // Supabase の or() は JOIN カラムを検索できない
+      // ★ Supabase の or() は JOIN カラムを検索できない
       if (filter) {
-          query = query.or(`name.ilike.%${filter}%,unit.ilike.%${filter}%,torihikisaki_id.ilike.%${filter}%`);
+        query = query.or(`name.ilike.%${filter}%,unit.ilike.%${filter}%,torihikisaki_id.ilike.%${filter}%`);
       }
 
       let { data, error } = await query;
@@ -40,7 +40,7 @@
         return;
       }
 
-      // 取引先名検索は JS 側でフィルタ
+      // ★ JOIN カラム（取引先名）は JS 側でフィルタ
       if (filter) {
         data = data.filter(row =>
           row.torihikisaki?.name?.includes(filter)
@@ -101,5 +101,3 @@
 
 </body>
 </html>
-
-
