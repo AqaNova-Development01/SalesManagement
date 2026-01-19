@@ -12,9 +12,13 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
+    // ★ 呼び出し元を取得（torihikisaki / hinmoku）
     const params = new URLSearchParams(window.location.search);
     const from = params.get("from");
 
+    // ----------------------------
+    // 一覧読み込み
+    // ----------------------------
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
 
@@ -23,7 +27,7 @@
         .select("*")
         .order("kana");
 
-      // ★ uuid の id は text にキャストして ilike を使う
+      // ★ id は uuid のため text キャストが必要
       if (filter) {
         query = query.or(`
           id::text.ilike.%${filter}%,
@@ -33,7 +37,7 @@
         `);
       }
 
-      let { data, error } = await query;
+      const { data, error } = await query;
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
@@ -52,8 +56,7 @@
       `;
 
       data.forEach(row => {
-        // ★ onclick の引数は JSON.stringify で安全にエスケープ
-        const safeId = JSON.stringify(row.id);
+        const safeId = JSON.stringify(row.id); // onclick 安全化
 
         html += `
           <tr>
@@ -71,13 +74,28 @@
     }
 
     // ----------------------------
-    // 呼び出し元に応じて戻る
+    // 行選択 → 呼び出し元に応じて戻る
     // ----------------------------
     window.selectRow = function(id) {
       if (from === "hinmoku") {
+        // 品目画面へ戻る（取引先IDを渡す）
         window.location.href = "hinmoku.html?torihikisaki_id=" + id;
       } else {
+        // 取引先画面へ戻る（編集モード）
         window.location.href = "torihikisaki.html?id=" + id;
+      }
+    };
+
+    // ----------------------------
+    // 新規作成 → 呼び出し元に応じて戻る
+    // ----------------------------
+    window.goNew = function() {
+      if (from === "hinmoku") {
+        // 品目画面へ戻る（取引先IDなし）
+        window.location.href = "hinmoku.html";
+      } else {
+        // 取引先画面へ戻る（新規モード）
+        window.location.href = "torihikisaki.html";
       }
     };
 
@@ -102,7 +120,7 @@
   <div id="listArea"></div>
 
   <br>
-  <button onclick="location.href='torihikisaki.html'">新規作成へ</button>
+  <button onclick="goNew()">新規作成</button>
 
 </body>
 </html>
