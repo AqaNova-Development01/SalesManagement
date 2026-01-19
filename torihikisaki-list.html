@@ -51,13 +51,15 @@
       `;
 
       data.forEach(row => {
+        // ★ onclick が壊れないようにエスケープ
+        const safeId = row.id.replace(/'/g, "\\'");
         html += `
           <tr>
             <td>${row.id}</td>
             <td>${row.kana || ""}</td>
             <td>${row.name}</td>
             <td>${row.person || ""}</td>
-            <td><button onclick="selectRow('${row.id}')">選択</button></td>
+            <td><button onclick="selectRow('${safeId}')">選択</button></td>
           </tr>
         `;
       });
@@ -66,14 +68,31 @@
       document.getElementById("listArea").innerHTML = html;
     }
 
-    window.selectRow = function(id) {
+    // ----------------------------
+    // 行選択 → 呼び出し元に応じて戻る
+    // ----------------------------
+    function selectRow(id) {
       if (from === "hinmoku") {
         window.location.href = "hinmoku.html?torihikisaki_id=" + id;
       } else {
         window.location.href = "torihikisaki.html?id=" + id;
       }
-    };
+    }
 
+    // ----------------------------
+    // 新規作成 → 呼び出し元に応じて戻る
+    // ----------------------------
+    function goNew() {
+      if (from === "hinmoku") {
+        window.location.href = "hinmoku.html";
+      } else {
+        window.location.href = "torihikisaki.html";
+      }
+    }
+
+    // ★ module スコープから公開
+    window.selectRow = selectRow;
+    window.goNew = goNew;
     window.loadList = loadList;
   </script>
 
@@ -95,7 +114,8 @@
   <div id="listArea"></div>
 
   <br>
-  <button onclick="location.href='torihikisaki.html'">新規作成へ</button>
+  <!-- ★ 新規作成ボタンを goNew() に変更 -->
+  <button onclick="goNew()">新規作成へ</button>
 
 </body>
 </html>
