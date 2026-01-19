@@ -14,7 +14,6 @@
 
     let currentUser = null;
 
-    // ログインユーザー取得
     async function loadUser() {
       const { data } = await supabase.auth.getUser();
       currentUser = data.user;
@@ -29,7 +28,6 @@
     // ----------------------------
     async function loadTorihikisakiName() {
       const id = document.getElementById("torihikisaki_id").value;
-
       if (!id) return;
 
       const { data } = await supabase
@@ -42,7 +40,7 @@
     }
 
     // ----------------------------
-    // データ読込
+    // データ読込（更新時）
     // ----------------------------
     async function loadData(id) {
       const { data } = await supabase
@@ -60,6 +58,7 @@
       document.getElementById("torihikisaki_id").value = data.torihikisaki_id || "";
 
       loadTorihikisakiName();
+      updateButtonState();
     }
 
     // ----------------------------
@@ -71,8 +70,11 @@
 
       const { error } = await supabase.from("hinmoku").insert(data);
 
-      document.getElementById("msg").textContent =
-        error ? "登録に失敗：" + error.message : "登録しました。";
+      if (error) alert("登録エラー: " + error.message);
+      else {
+        alert("登録しました");
+        clearForm();
+      }
     }
 
     // ----------------------------
@@ -88,8 +90,11 @@
         .update(data)
         .eq("id", id);
 
-      document.getElementById("msg").textContent =
-        error ? "更新に失敗：" + error.message : "更新しました。";
+      if (error) alert("更新エラー: " + error.message);
+      else {
+        alert("更新しました");
+        clearForm();
+      }
     }
 
     // ----------------------------
@@ -98,13 +103,18 @@
     async function deleteData() {
       const id = document.getElementById("id").value;
 
+      if (!confirm("本当に削除しますか？")) return;
+
       const { error } = await supabase
         .from("hinmoku")
         .delete()
         .eq("id", id);
 
-      document.getElementById("msg").textContent =
-        error ? "削除に失敗：" + error.message : "削除しました。";
+      if (error) alert("削除エラー: " + error.message);
+      else {
+        alert("削除しました");
+        clearForm();
+      }
     }
 
     // ----------------------------
@@ -122,11 +132,57 @@
     }
 
     // ----------------------------
+    // フォームクリア
+    // ----------------------------
+    function clearForm() {
+      document.getElementById("id").value = "";
+      document.getElementById("name").value = "";
+      document.getElementById("unit").value = "";
+      document.getElementById("price").value = "";
+      document.getElementById("tax_rate").value = "";
+      document.getElementById("memo").value = "";
+      document.getElementById("torihikisaki_id").value = "";
+      document.getElementById("torihikisaki_name").value = "";
+
+      updateButtonState();
+    }
+
+    // ----------------------------
+    // ボタン活性/非活性制御
+    // ----------------------------
+    function updateButtonState() {
+      const id = document.getElementById("id").value;
+      const name = document.getElementById("name").value;
+
+      const btnRegister = document.getElementById("btnRegister");
+      const btnUpdate = document.getElementById("btnUpdate");
+      const btnDelete = document.getElementById("btnDelete");
+
+      if (id) {
+        // 一覧から選択 → 登録不可
+        btnRegister.disabled = true;
+        btnUpdate.disabled = false;
+        btnDelete.disabled = false;
+      } else {
+        // 新規
+        btnRegister.disabled = false;
+
+        if (name.trim() === "") {
+          btnUpdate.disabled = true;
+          btnDelete.disabled = true;
+        } else {
+          btnUpdate.disabled = false;
+          btnDelete.disabled = true; // 新規は削除不可
+        }
+      }
+    }
+
+    // ----------------------------
     // 取引先一覧を開く
     // ----------------------------
     window.openTorihikisakiList = function() {
       window.location.href =
-        "https://aqanova-development01.github.io/SalesManagement/torihikisaki-list.html?from=hinmoku";
+        "torihikisaki-list.html?from=hinmoku";
     };
 
     // ----------------------------
@@ -134,16 +190,18 @@
     // ----------------------------
     loadUser();
 
-    // 取引先一覧から戻ってきた場合
     if (torihikisaki_id_from_prev) {
       document.getElementById("torihikisaki_id").value = torihikisaki_id_from_prev;
       loadTorihikisakiName();
     }
 
-    // 編集モード
     if (selectedId) {
       loadData(selectedId);
+    } else {
+      updateButtonState();
     }
+
+    document.addEventListener("input", updateButtonState);
 
     window.registerData = registerData;
     window.updateData = updateData;
@@ -155,7 +213,7 @@
     body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
     button { width: 100%; padding: 12px; margin: 10px 0; }
-    #msg { margin-top: 15px; color: #d00; }
+    #id, #torihikisaki_id, #torihikisaki_name { background: #eee; }
   </style>
 </head>
 
@@ -168,10 +226,10 @@
   <button type="button" onclick="openTorihikisakiList()">取引先を選択</button>
 
   <label>取引先ID</label>
-  <input id="torihikisaki_id" type="text" readonly style="background:#eee;">
+  <input id="torihikisaki_id" type="text" readonly>
 
   <label>取引先名</label>
-  <input id="torihikisaki_name" type="text" readonly style="background:#eee;">
+  <input id="torihikisaki_name" type="text" readonly>
 
   <input id="id" type="hidden">
 
@@ -190,19 +248,12 @@
   <label>備考</label>
   <textarea id="memo"></textarea>
 
-  <button onclick="registerData()">登録</button>
-  <button onclick="updateData()">更新</button>
-  <button onclick="deleteData()">削除</button>
+  <button id="btnRegister" onclick="registerData()">登録</button>
+  <button id="btnUpdate" onclick="updateData()">更新</button>
+  <button id="btnDelete" onclick="deleteData()">削除</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/hinmoku-list.html'">
-    一覧へ
-  </button>
-
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/index.html'">
-    メニューに戻る
-  </button>
-
-  <div id="msg"></div>
+  <button onclick="location.href='hinmoku-list.html'">一覧へ</button>
+  <button onclick="location.href='index.html'">メニューへ</button>
 
 </body>
 </html>
