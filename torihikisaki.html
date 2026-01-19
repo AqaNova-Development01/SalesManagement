@@ -7,55 +7,55 @@
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
 
-    const COMPANY_ID = "TK000000";
+    let currentUser = null;
+
+    // ログインユーザー取得
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      currentUser = data.user;
+    }
 
     const params = new URLSearchParams(window.location.search);
-    const selectedCode = params.get("code");
+    const selectedId = params.get("id");
 
     // ----------------------------
-    // 採番（torihikisaki 用）
+    // 採番（取引先コード）
     // ----------------------------
     async function generateCode() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("numbering")
         .select("last_no")
-        .eq("company_id", COMPANY_ID)
         .eq("doc_type", "torihikisaki")
         .single();
-
-      if (error) return null;
 
       const nextNo = data.last_no + 1;
 
       await supabase
         .from("numbering")
         .update({ last_no: nextNo })
-        .eq("company_id", COMPANY_ID)
         .eq("doc_type", "torihikisaki");
 
-      return "T" + String(nextNo).padStart(6, "0");
+      return "TK" + String(nextNo).padStart(6, "0");
     }
 
     // ----------------------------
     // データ読込
     // ----------------------------
-    async function loadData(code) {
-      const { data, error } = await supabase
+    async function loadData(id) {
+      const { data } = await supabase
         .from("torihikisaki")
         .select("*")
-        .eq("company_id", COMPANY_ID)
-        .eq("code", code)
+        .eq("id", id)
         .single();
 
-      if (error) return;
-
-      document.getElementById("code").value = data.code;
+      document.getElementById("id").value = data.id;
       document.getElementById("kana").value = data.kana || "";
-      document.getElementById("name").value = data.name || "";
+      document.getElementById("name").value = data.name;
       document.getElementById("department").value = data.department || "";
       document.getElementById("person").value = data.person || "";
       document.getElementById("postal_code").value = data.postal_code || "";
@@ -77,8 +77,8 @@
       const code = await generateCode();
 
       const data = collectForm();
-      data.company_id = COMPANY_ID;
-      data.code = code;
+      data.id = code;
+      data.created_by = currentUser.id;
 
       const { error } = await supabase.from("torihikisaki").insert(data);
 
@@ -90,14 +90,14 @@
     // 更新
     // ----------------------------
     async function updateData() {
-      const code = document.getElementById("code").value;
+      const id = document.getElementById("id").value;
       const data = collectForm();
+      data.updated_by = currentUser.id;
 
       const { error } = await supabase
         .from("torihikisaki")
         .update(data)
-        .eq("company_id", COMPANY_ID)
-        .eq("code", code);
+        .eq("id", id);
 
       document.getElementById("msg").textContent =
         error ? "更新に失敗：" + error.message : "更新しました。";
@@ -107,13 +107,12 @@
     // 削除
     // ----------------------------
     async function deleteData() {
-      const code = document.getElementById("code").value;
+      const id = document.getElementById("id").value;
 
       const { error } = await supabase
         .from("torihikisaki")
         .delete()
-        .eq("company_id", COMPANY_ID)
-        .eq("code", code);
+        .eq("id", id);
 
       document.getElementById("msg").textContent =
         error ? "削除に失敗：" + error.message : "削除しました。";
@@ -144,8 +143,10 @@
     // ----------------------------
     // 初期処理
     // ----------------------------
-    if (selectedCode) {
-      loadData(selectedCode);
+    loadUser();
+
+    if (selectedId) {
+      loadData(selectedId);
     }
 
     window.registerData = registerData;
@@ -165,23 +166,52 @@
 
   <h2>取引先マスタ</h2>
 
-  <input id="code" type="text" placeholder="コード（更新時のみ）" readonly>
-  <input id="kana" type="text" placeholder="会社名カナ">
-  <input id="name" type="text" placeholder="会社名">
-  <input id="department" type="text" placeholder="部署">
-  <input id="person" type="text" placeholder="担当者">
-  <input id="postal_code" type="text" placeholder="郵便番号">
-  <textarea id="address" placeholder="住所"></textarea>
-  <input id="tel" type="text" placeholder="電話番号">
-  <input id="fax" type="text" placeholder="FAX">
-  <input id="invoice_number" type="text" placeholder="インボイス番号">
-  <input id="billing_email_or_url" type="text" placeholder="請求書送付先（メール or URL）">
+  <label>取引先コード</label>
+  <input id="id" type="text" readonly style="background:#eee;">
+
+  <label>会社名カナ</label>
+  <input id="kana" type="text">
+
+  <label>会社名</label>
+  <input id="name" type="text">
+
+  <label>部署</label>
+  <input id="department" type="text">
+
+  <label>担当者</label>
+  <input id="person" type="text">
+
+  <label>郵便番号</label>
+  <input id="postal_code" type="text">
+
+  <label>住所</label>
+  <textarea id="address"></textarea>
+
+  <label>電話番号</label>
+  <input id="tel" type="text">
+
+  <label>FAX番号</label>
+  <input id="fax" type="text">
+
+  <label>インボイス番号</label>
+  <input id="invoice_number" type="text">
+
+  <label>請求書送付先（メール or URL）</label>
+  <input id="billing_email_or_url" type="text">
 
   <h3>振込先情報</h3>
-  <input id="bank_name" type="text" placeholder="銀行名">
-  <input id="bank_branch" type="text" placeholder="支店名">
-  <input id="bank_account" type="text" placeholder="種別＋口座番号">
-  <input id="account_holder" type="text" placeholder="口座名義">
+
+  <label>銀行名</label>
+  <input id="bank_name" type="text">
+
+  <label>支店名</label>
+  <input id="bank_branch" type="text">
+
+  <label>口座番号＋種別</label>
+  <input id="bank_account" type="text">
+
+  <label>口座名義</label>
+  <input id="account_holder" type="text">
 
   <button onclick="registerData()">登録（自動採番）</button>
   <button onclick="updateData()">更新</button>
