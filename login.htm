@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <title>ログイン</title>
+
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // Supabase 設定（以前の形式をそのまま使用）
     const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ログイン処理
     async function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
@@ -27,11 +26,9 @@
         return;
       }
 
-      // ログイン成功 → メイン画面へ
       window.location.href = "index.html";
     }
 
-    // グローバルに公開（HTML の onclick から呼べるように）
     window.login = login;
   </script>
 
@@ -40,8 +37,10 @@
     input { width: 100%; padding: 10px; margin: 10px 0; }
     button { width: 100%; padding: 10px; }
     #error { color: red; margin-top: 10px; }
+    a { display: block; margin-top: 15px; text-align: right; }
   </style>
 </head>
+
 <body>
 
   <h2>ログイン</h2>
@@ -50,6 +49,8 @@
   <input id="password" type="password" placeholder="パスワード">
 
   <button onclick="login()">ログイン</button>
+
+  <a href="reset.html">パスワードを忘れた場合はこちら</a>
 
   <div id="error"></div>
 
