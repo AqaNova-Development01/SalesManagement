@@ -3,7 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <title>ログイン</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // Supabase 設定（以前の形式をそのまま使用）
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ログイン処理
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        document.getElementById("error").textContent =
+          "ログインに失敗しました：" + error.message;
+        return;
+      }
+
+      // ログイン成功 → メイン画面へ
+      window.location.href = "index.html";
+    }
+
+    // グローバルに公開（HTML の onclick から呼べるように）
+    window.login = login;
+  </script>
+
   <style>
     body { font-family: sans-serif; padding: 40px; max-width: 400px; margin: auto; }
     input { width: 100%; padding: 10px; margin: 10px 0; }
@@ -21,31 +52,6 @@
   <button onclick="login()">ログイン</button>
 
   <div id="error"></div>
-
-  <script>
-    const supabase = supabase.createClient(
-      "https://YOUR-PROJECT.supabase.co",
-      "YOUR-PUBLIC-ANON-KEY"
-    );
-
-    async function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        document.getElementById("error").textContent = "ログインに失敗しました：" + error.message;
-        return;
-      }
-
-      // ログイン成功 → メイン画面へ
-      window.location.href = "index.html";
-    }
-  </script>
 
 </body>
 </html>
