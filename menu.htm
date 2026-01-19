@@ -1,80 +1,80 @@
-!DOCTYPE html
-html lang=ja
-head
-meta charset=UTF-8
-titleメニューtitle
-style
-  body { font-family sans-serif; margin 40px; }
-  h2 { margin-bottom 30px; }
-  .section { margin-bottom 40px; }
-  a { display block; margin 8px 0; font-size 18px; }
-  button { padding 8px 20px; margin-top 20px; }
-style
-head
-body
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>メニュー</title>
+<style>
+  body { font-family: sans-serif; margin: 40px; }
+  h2 { margin-bottom: 30px; }
+  .section { margin-bottom: 40px; }
+  a { display: block; margin: 8px 0; font-size: 18px; }
+  button { padding: 8px 20px; margin-top: 20px; }
+</style>
+</head>
+<body>
 
-h2アクア・ノヴァ 販売管理システム メニューh2
+<h2>アクア・ノヴァ 販売管理システム メニュー</h2>
 
-div id=userInfodiv
+<div id="userInfo"></div>
 
-!-- マスタ --
-div class=section
-  h3【マスタ】h3
-  a href=torihikisaki.htm取引先マスタa
-  a href=shohin.htm商品マスタ（未作成）a
-  a href=tantosha.htm担当者マスタ（未作成）a
-div
+<!-- マスタ -->
+<div class="section">
+  <h3>【マスタ】</h3>
+  <a href="torihikisaki.htm">取引先マスタ</a>
+  <a href="shohin.htm">商品マスタ（未作成）</a>
+  <a href="tantosha.htm">担当者マスタ（未作成）</a>
+</div>
 
-!-- 入力画面 --
-div class=section
-  h3【入力画面】h3
-  a href=uriage.htm売上入力a
-  a href=shiire.htm仕入入力a
-  a href=nyukin.htm入金入力a
-  a href=shiharai.htm支払入力a
-  a href=seikyu.htm請求書入力a
-div
+<!-- 入力画面 -->
+<div class="section">
+  <h3>【入力画面】</h3>
+  <a href="uriage.htm">売上入力</a>
+  <a href="shiire.htm">仕入入力</a>
+  <a href="nyukin.htm">入金入力</a>
+  <a href="shiharai.htm">支払入力</a>
+  <a href="seikyu.htm">請求書入力</a>
+</div>
 
-!-- 帳票 --
-div class=section
-  h3【帳票】h3
-  a href=seikyu_print.htm請求書発行（未作成）a
-  a href=uriage_meisai_print.htm売上明細書（未作成）a
-  a href=shiire_meisai_print.htm仕入明細書（未作成）a
-  a href=nyukin_list.htm入金一覧（未作成）a
-  a href=shiharai_list.htm支払一覧（未作成）a
-  a href=zaiko_list.htm在庫一覧（未作成）a
-div
+<!-- 帳票 -->
+<div class="section">
+  <h3>【帳票】</h3>
+  <a href="seikyu_print.htm">請求書発行（未作成）</a>
+  <a href="uriage_meisai_print.htm">売上明細書（未作成）</a>
+  <a href="shiire_meisai_print.htm">仕入明細書（未作成）</a>
+  <a href="nyukin_list.htm">入金一覧（未作成）</a>
+  <a href="shiharai_list.htm">支払一覧（未作成）</a>
+  <a href="zaiko_list.htm">在庫一覧（未作成）</a>
+</div>
 
-!-- 管理系 --
-div class=section
-  h3【管理】h3
-  a href=user_manage.htmユーザー管理（未作成）a
-  a href=numbering_manage.htm採番管理（未作成）a
-div
+<!-- 管理系 -->
+<div class="section">
+  <h3>【管理】</h3>
+  <a href="user_manage.htm">ユーザー管理（未作成）</a>
+  <a href="numbering_manage.htm">採番管理（未作成）</a>
+</div>
 
-button onclick=logout()ログアウトbutton
+<button onclick="logout()">ログアウト</button>
 
-script type=module
-   ログインチェック
-  const user = JSON.parse(localStorage.getItem(user));
+<script type="module">
+  // ログインチェック
+  const user = JSON.parse(localStorage.getItem("user"));
   if (!user) {
-    alert(ログインしてください);
-    window.location.href = login.htm;
+    alert("ログインしてください");
+    window.location.href = "login.htm";
   }
 
-   ログインユーザー表示
-  document.getElementById(userInfo).innerHTML =
-    bログイン中：b  + user.name + （ + user.login_id + ）;
+  // ログインユーザー表示
+  document.getElementById("userInfo").innerHTML =
+    "<b>ログイン中：</b> " + user.name + "（" + user.login_id + "）";
 
-   ログアウト処理
+  // ログアウト処理
   function logout() {
-    localStorage.removeItem(user);
-    window.location.href = login.htm;
+    localStorage.removeItem("user");
+    window.location.href = "login.htm";
   }
 
   window.logout = logout;
-script
+</script>
 
-body
-html
+</body>
+</html>
