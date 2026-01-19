@@ -2,7 +2,7 @@
 html lang=ja
 head
 meta charset=UTF-8
-titleƒƒOƒCƒ“title
+titleãƒ­ã‚°ã‚¤ãƒ³title
 style
   body { font-family sans-serif; margin 40px; }
   .box { width 300px; margin auto; }
@@ -13,12 +13,12 @@ style
 head
 body
 
-h2ƒAƒNƒAEƒmƒ”ƒ@ ”Ì”„ŠÇ— ƒƒOƒCƒ“h2
+h2ã‚¢ã‚¯ã‚¢ãƒ»ãƒãƒ´ã‚¡ è²©å£²ç®¡ç† ãƒ­ã‚°ã‚¤ãƒ³h2
 
 div class=box
-  input id=login_id placeholder=ƒƒOƒCƒ“ID
-  input id=password type=password placeholder=ƒpƒXƒ[ƒh
-  button onclick=login()ƒƒOƒCƒ“button
+  input id=login_id placeholder=ãƒ­ã‚°ã‚¤ãƒ³ID
+  input id=password type=password placeholder=ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰
+  button onclick=login()ãƒ­ã‚°ã‚¤ãƒ³button
   div id=msgdiv
 div
 
@@ -41,18 +41,18 @@ script type=module
       .single();
 
     if (error  !data) {
-      document.getElementById(msg).innerText = ID‚Ü‚½‚ÍƒpƒXƒ[ƒh‚ªˆá‚¢‚Ü‚·;
+      document.getElementById(msg).innerText = IDã¾ãŸã¯ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ãŒé•ã„ã¾ã™;
       return;
     }
 
-     ƒƒOƒCƒ“¬Œ÷ ¨ ƒ[ƒJƒ‹ƒXƒgƒŒ[ƒW‚É•Û‘¶
+     ãƒ­ã‚°ã‚¤ãƒ³æˆåŠŸ â†’ ãƒ­ãƒ¼ã‚«ãƒ«ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸ã«ä¿å­˜
     localStorage.setItem(user, JSON.stringify(data));
 
-     ƒƒjƒ…[‰æ–Ê‚Ö‘JˆÚ
+     ãƒ¡ãƒ‹ãƒ¥ãƒ¼ç”»é¢ã¸é·ç§»
     window.location.href = menu.htm;
   }
 
-   HTML ‚©‚çŒÄ‚×‚é‚æ‚¤‚ÉŒöŠJ
+   HTML ã‹ã‚‰å‘¼ã¹ã‚‹ã‚ˆã†ã«å…¬é–‹
   window.login = login;
 script
 
