@@ -12,13 +12,9 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-    // ★ 呼び出し元を取得（hinmoku / torihikisaki）
     const params = new URLSearchParams(window.location.search);
     const from = params.get("from");
 
-    // ----------------------------
-    // 一覧読み込み
-    // ----------------------------
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
 
@@ -27,17 +23,16 @@
         .select("*")
         .order("kana");
 
-      // ★ id は uuid のため text キャストが必要
       if (filter) {
         query = query.or(`
-          id::text.ilike.%${filter}%,
+          id.ilike.%${filter}%,
           kana.ilike.%${filter}%,
           name.ilike.%${filter}%,
           person.ilike.%${filter}%
         `);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
@@ -56,9 +51,6 @@
       `;
 
       data.forEach(row => {
-        // ★ onclick の引数を安全にする
-        const safeId = JSON.stringify(row.id);
-
         html += `
           <tr>
             <td>${row.id}</td>
@@ -74,27 +66,11 @@
       document.getElementById("listArea").innerHTML = html;
     }
 
-    // ----------------------------
-    // 行選択 → 呼び出し元に応じて戻る
-    // ----------------------------
     window.selectRow = function(id) {
       if (from === "hinmoku") {
-        // 品目画面へ戻る（取引先IDを渡す）
         window.location.href = "hinmoku.html?torihikisaki_id=" + id;
       } else {
-        // 取引先画面へ戻る（編集モード）
         window.location.href = "torihikisaki.html?id=" + id;
-      }
-    };
-
-    // ----------------------------
-    // 新規作成 → 呼び出し元に応じて戻る
-    // ----------------------------
-    window.goNew = function() {
-      if (from === "hinmoku") {
-        window.location.href = "hinmoku.html";
-      } else {
-        window.location.href = "torihikisaki.html";
       }
     };
 
@@ -119,7 +95,7 @@
   <div id="listArea"></div>
 
   <br>
-  <button onclick="goNew()">新規作成</button>
+  <button onclick="location.href='torihikisaki.html'">新規作成へ</button>
 
 </body>
 </html>
