@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>品目一覧</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const torihikisaki_id = params.get("torihikisaki_id");
+    const from = params.get("from"); // hinmoku から呼ばれたか判定
+
+    async function loadList() {
+      const filter = document.getElementById("filter").value.trim();
+
+      let query = supabase
+        .from("hinmoku")
+        .select("*, torihikisaki:torihikisaki_id(name)")
+        .order("name");
+
+      // ★ 前画面の取引先IDで自動絞り込み
+      if (torihikisaki_id) {
+        query = query.eq("torihikisaki_id", torihikisaki_id);
+      }
+
+      // ★ 検索フィルタ
+      if (filter) {
+        query = query.or(`
+          name.ilike.%${filter}%,
+          torihikisaki.name.ilike.%${filter}%,
+          torihikisaki_id.ilike.%${filter}%
+        `);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        alert("一覧取得エラー: " + error.message);
+        return;
+      }
+
+      let html = "<table><tr><th>品目名</th><th>取引先</th><th>単価</th><th>選択</th></tr>";
+
+      data.forEach(row => {
+        html += `
+          <tr>
+            <td>${row.name}</td>
+            <td>${row.torihikisaki?.name || ""}</td>
+            <td>${row.price || ""}</td>
+            <td><button onclick="selectRow('${row.id}')">選択</button></td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+      document.getElementById("listArea").innerHTML = html;
+    }
+
+    // ★ 選択時の遷移
+    window.selectRow = function(id) {
+      window.location.href =
+        "https://aqanova-development01.github.io/SalesManagement/hinmoku.html?id=" + id;
+    };
+
+    window.loadList = loadList;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input { padding: 8px; width: 300px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+  </style>
+</head>
+
+<body>
+
+  <h2>品目一覧</h2>
+
+  <input id="filter" type="text" placeholder="品目名 / 取引先名 / 取引先ID">
+  <button onclick="loadList()">検索</button>
+
+  <div id="listArea"></div>
+
+  <br>
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/hinmoku.html'">
+    新規作成へ戻る
+  </button>
+
+</body>
+</html>

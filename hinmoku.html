@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>品目マスタ</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    let currentUser = null;
+
+    // ログインユーザー取得
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      currentUser = data.user;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const selectedId = params.get("id");
+    const torihikisaki_id_from_prev = params.get("torihikisaki_id");
+
+    // ----------------------------
+    // 取引先名 自動取得
+    // ----------------------------
+    async function loadTorihikisakiName() {
+      const id = document.getElementById("torihikisaki_id").value;
+
+      if (!id) return;
+
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("name")
+        .eq("id", id)
+        .single();
+
+      document.getElementById("torihikisaki_name").value = data?.name || "";
+    }
+
+    // ----------------------------
+    // データ読込
+    // ----------------------------
+    async function loadData(id) {
+      const { data } = await supabase
+        .from("hinmoku")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      document.getElementById("id").value = data.id;
+      document.getElementById("name").value = data.name;
+      document.getElementById("unit").value = data.unit || "";
+      document.getElementById("price").value = data.price || "";
+      document.getElementById("tax_rate").value = data.tax_rate || "";
+      document.getElementById("memo").value = data.memo || "";
+      document.getElementById("torihikisaki_id").value = data.torihikisaki_id || "";
+
+      loadTorihikisakiName();
+    }
+
+    // ----------------------------
+    // 登録
+    // ----------------------------
+    async function registerData() {
+      const data = collectForm();
+      data.created_by = currentUser.id;
+
+      const { error } = await supabase.from("hinmoku").insert(data);
+
+      document.getElementById("msg").textContent =
+        error ? "登録に失敗：" + error.message : "登録しました。";
+    }
+
+    // ----------------------------
+    // 更新
+    // ----------------------------
+    async function updateData() {
+      const id = document.getElementById("id").value;
+      const data = collectForm();
+      data.updated_by = currentUser.id;
+
+      const { error } = await supabase
+        .from("hinmoku")
+        .update(data)
+        .eq("id", id);
+
+      document.getElementById("msg").textContent =
+        error ? "更新に失敗：" + error.message : "更新しました。";
+    }
+
+    // ----------------------------
+    // 削除
+    // ----------------------------
+    async function deleteData() {
+      const id = document.getElementById("id").value;
+
+      const { error } = await supabase
+        .from("hinmoku")
+        .delete()
+        .eq("id", id);
+
+      document.getElementById("msg").textContent =
+        error ? "削除に失敗：" + error.message : "削除しました。";
+    }
+
+    // ----------------------------
+    // フォーム収集
+    // ----------------------------
+    function collectForm() {
+      return {
+        name: document.getElementById("name").value,
+        unit: document.getElementById("unit").value,
+        price: document.getElementById("price").value,
+        tax_rate: document.getElementById("tax_rate").value,
+        memo: document.getElementById("memo").value,
+        torihikisaki_id: document.getElementById("torihikisaki_id").value
+      };
+    }
+
+    // ----------------------------
+    // 取引先一覧を開く
+    // ----------------------------
+    window.openTorihikisakiList = function() {
+      window.location.href =
+        "https://aqanova-development01.github.io/SalesManagement/torihikisaki-list.html?from=hinmoku";
+    };
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    loadUser();
+
+    // 取引先一覧から戻ってきた場合
+    if (torihikisaki_id_from_prev) {
+      document.getElementById("torihikisaki_id").value = torihikisaki_id_from_prev;
+      loadTorihikisakiName();
+    }
+
+    // 編集モード
+    if (selectedId) {
+      loadData(selectedId);
+    }
+
+    window.registerData = registerData;
+    window.updateData = updateData;
+    window.deleteData = deleteData;
+    window.loadTorihikisakiName = loadTorihikisakiName;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
+    button { width: 100%; padding: 12px; margin: 10px 0; }
+    #msg { margin-top: 15px; color: #d00; }
+  </style>
+</head>
+
+<body>
+
+  <h2>品目マスタ</h2>
+
+  <input id="id" type="hidden">
+
+  <label>品目名</label>
+  <input id="name" type="text">
+
+  <label>単位</label>
+  <input id="unit" type="text">
+
+  <label>基準単価</label>
+  <input id="price" type="number">
+
+  <label>税率（10 / 8 など）</label>
+  <input id="tax_rate" type="number">
+
+  <label>備考</label>
+  <textarea id="memo"></textarea>
+
+  <h3>取引先（仕入先）</h3>
+
+  <button type="button" onclick="openTorihikisakiList()">取引先を選択</button>
+
+  <label>取引先ID</label>
+  <input id="torihikisaki_id" type="text" readonly style="background:#eee;">
+
+  <label>取引先名</label>
+  <input id="torihikisaki_name" type="text" readonly style="background:#eee;">
+
+  <button onclick="registerData()">登録</button>
+  <button onclick="updateData()">更新</button>
+  <button onclick="deleteData()">削除</button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/hinmoku-list.html'">
+    一覧へ
+  </button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/index.html'">
+    メニューに戻る
+  </button>
+
+  <div id="msg"></div>
+
+</body>
+</html>
