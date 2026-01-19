@@ -23,9 +23,13 @@
         .select("*")
         .order("kana");
 
+      // ★ uuid の id は text にキャストして ilike を使う
       if (filter) {
         query = query.or(`
-            query = query.or(`id.ilike.%${filter}%,kana.ilike.%${filter}%,name.ilike.%${filter}%,person.ilike.%${filter}%`);
+          id::text.ilike.%${filter}%,
+          kana.ilike.%${filter}%,
+          name.ilike.%${filter}%,
+          person.ilike.%${filter}%
         `);
       }
 
@@ -48,13 +52,16 @@
       `;
 
       data.forEach(row => {
+        // ★ onclick の引数は JSON.stringify で安全にエスケープ
+        const safeId = JSON.stringify(row.id);
+
         html += `
           <tr>
             <td>${row.id}</td>
             <td>${row.kana || ""}</td>
             <td>${row.name}</td>
             <td>${row.person || ""}</td>
-            <td><button onclick="selectRow('${row.id}')">選択</button></td>
+            <td><button onclick="selectRow(${safeId})">選択</button></td>
           </tr>
         `;
       });
@@ -63,6 +70,9 @@
       document.getElementById("listArea").innerHTML = html;
     }
 
+    // ----------------------------
+    // 呼び出し元に応じて戻る
+    // ----------------------------
     window.selectRow = function(id) {
       if (from === "hinmoku") {
         window.location.href = "hinmoku.html?torihikisaki_id=" + id;
@@ -96,4 +106,3 @@
 
 </body>
 </html>
-
