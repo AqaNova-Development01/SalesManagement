@@ -13,19 +13,18 @@
 
     const COMPANY_ID = "TK000000";
 
-    // URL パラメータ取得
     const params = new URLSearchParams(window.location.search);
     const selectedCode = params.get("code");
 
     // ----------------------------
-    // 採番（ナンバリング）
+    // 採番（torihikisaki 用）
     // ----------------------------
-    async function generateCustomerCode() {
+    async function generateCode() {
       const { data, error } = await supabase
         .from("numbering")
         .select("last_no")
         .eq("company_id", COMPANY_ID)
-        .eq("doc_type", "customer")
+        .eq("doc_type", "torihikisaki")
         .single();
 
       if (error) return null;
@@ -36,45 +35,52 @@
         .from("numbering")
         .update({ last_no: nextNo })
         .eq("company_id", COMPANY_ID)
-        .eq("doc_type", "customer");
+        .eq("doc_type", "torihikisaki");
 
-      return "C" + String(nextNo).padStart(6, "0");
+      return "T" + String(nextNo).padStart(6, "0");
     }
 
     // ----------------------------
     // データ読込
     // ----------------------------
-    async function loadCustomer(code) {
+    async function loadData(code) {
       const { data, error } = await supabase
-        .from("customers")
+        .from("torihikisaki")
         .select("*")
         .eq("company_id", COMPANY_ID)
-        .eq("customer_code", code)
+        .eq("code", code)
         .single();
 
       if (error) return;
 
-      document.getElementById("customer_code").value = data.customer_code;
-      document.getElementById("customer_name").value = data.customer_name;
+      document.getElementById("code").value = data.code;
+      document.getElementById("kana").value = data.kana || "";
+      document.getElementById("name").value = data.name || "";
+      document.getElementById("department").value = data.department || "";
+      document.getElementById("person").value = data.person || "";
       document.getElementById("postal_code").value = data.postal_code || "";
       document.getElementById("address").value = data.address || "";
-      document.getElementById("phone").value = data.phone || "";
+      document.getElementById("tel").value = data.tel || "";
+      document.getElementById("fax").value = data.fax || "";
+      document.getElementById("invoice_number").value = data.invoice_number || "";
+      document.getElementById("billing_email_or_url").value = data.billing_email_or_url || "";
+      document.getElementById("bank_name").value = data.bank_name || "";
+      document.getElementById("bank_branch").value = data.bank_branch || "";
+      document.getElementById("bank_account").value = data.bank_account || "";
+      document.getElementById("account_holder").value = data.account_holder || "";
     }
 
     // ----------------------------
     // 登録
     // ----------------------------
-    async function registerCustomer() {
-      const code = await generateCustomerCode();
+    async function registerData() {
+      const code = await generateCode();
 
-      const { error } = await supabase.from("customers").insert({
-        company_id: COMPANY_ID,
-        customer_code: code,
-        customer_name: document.getElementById("customer_name").value,
-        postal_code: document.getElementById("postal_code").value,
-        address: document.getElementById("address").value,
-        phone: document.getElementById("phone").value
-      });
+      const data = collectForm();
+      data.company_id = COMPANY_ID;
+      data.code = code;
+
+      const { error } = await supabase.from("torihikisaki").insert(data);
 
       document.getElementById("msg").textContent =
         error ? "登録に失敗：" + error.message : "登録しました（コード：" + code + "）";
@@ -83,19 +89,15 @@
     // ----------------------------
     // 更新
     // ----------------------------
-    async function updateCustomer() {
-      const code = document.getElementById("customer_code").value;
+    async function updateData() {
+      const code = document.getElementById("code").value;
+      const data = collectForm();
 
       const { error } = await supabase
-        .from("customers")
-        .update({
-          customer_name: document.getElementById("customer_name").value,
-          postal_code: document.getElementById("postal_code").value,
-          address: document.getElementById("address").value,
-          phone: document.getElementById("phone").value
-        })
+        .from("torihikisaki")
+        .update(data)
         .eq("company_id", COMPANY_ID)
-        .eq("customer_code", code);
+        .eq("code", code);
 
       document.getElementById("msg").textContent =
         error ? "更新に失敗：" + error.message : "更新しました。";
@@ -104,33 +106,55 @@
     // ----------------------------
     // 削除
     // ----------------------------
-    async function deleteCustomer() {
-      const code = document.getElementById("customer_code").value;
+    async function deleteData() {
+      const code = document.getElementById("code").value;
 
       const { error } = await supabase
-        .from("customers")
+        .from("torihikisaki")
         .delete()
         .eq("company_id", COMPANY_ID)
-        .eq("customer_code", code);
+        .eq("code", code);
 
       document.getElementById("msg").textContent =
         error ? "削除に失敗：" + error.message : "削除しました。";
     }
 
     // ----------------------------
+    // フォーム収集
+    // ----------------------------
+    function collectForm() {
+      return {
+        kana: document.getElementById("kana").value,
+        name: document.getElementById("name").value,
+        department: document.getElementById("department").value,
+        person: document.getElementById("person").value,
+        postal_code: document.getElementById("postal_code").value,
+        address: document.getElementById("address").value,
+        tel: document.getElementById("tel").value,
+        fax: document.getElementById("fax").value,
+        invoice_number: document.getElementById("invoice_number").value,
+        billing_email_or_url: document.getElementById("billing_email_or_url").value,
+        bank_name: document.getElementById("bank_name").value,
+        bank_branch: document.getElementById("bank_branch").value,
+        bank_account: document.getElementById("bank_account").value,
+        account_holder: document.getElementById("account_holder").value
+      };
+    }
+
+    // ----------------------------
     // 初期処理
     // ----------------------------
     if (selectedCode) {
-      loadCustomer(selectedCode);
+      loadData(selectedCode);
     }
 
-    window.registerCustomer = registerCustomer;
-    window.updateCustomer = updateCustomer;
-    window.deleteCustomer = deleteCustomer;
+    window.registerData = registerData;
+    window.updateData = updateData;
+    window.deleteData = deleteData;
   </script>
 
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; }
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
     button { width: 100%; padding: 12px; margin: 10px 0; }
     #msg { margin-top: 15px; color: #d00; }
@@ -141,15 +165,27 @@
 
   <h2>取引先マスタ</h2>
 
-  <input id="customer_code" type="text" placeholder="取引先コード（更新時のみ）" readonly>
-  <input id="customer_name" type="text" placeholder="取引先名">
+  <input id="code" type="text" placeholder="コード（更新時のみ）" readonly>
+  <input id="kana" type="text" placeholder="会社名カナ">
+  <input id="name" type="text" placeholder="会社名">
+  <input id="department" type="text" placeholder="部署">
+  <input id="person" type="text" placeholder="担当者">
   <input id="postal_code" type="text" placeholder="郵便番号">
-  <input id="address" type="text" placeholder="住所">
-  <input id="phone" type="text" placeholder="電話番号">
+  <textarea id="address" placeholder="住所"></textarea>
+  <input id="tel" type="text" placeholder="電話番号">
+  <input id="fax" type="text" placeholder="FAX">
+  <input id="invoice_number" type="text" placeholder="インボイス番号">
+  <input id="billing_email_or_url" type="text" placeholder="請求書送付先（メール or URL）">
 
-  <button onclick="registerCustomer()">登録（自動採番）</button>
-  <button onclick="updateCustomer()">更新</button>
-  <button onclick="deleteCustomer()">削除</button>
+  <h3>振込先情報</h3>
+  <input id="bank_name" type="text" placeholder="銀行名">
+  <input id="bank_branch" type="text" placeholder="支店名">
+  <input id="bank_account" type="text" placeholder="種別＋口座番号">
+  <input id="account_holder" type="text" placeholder="口座名義">
+
+  <button onclick="registerData()">登録（自動採番）</button>
+  <button onclick="updateData()">更新</button>
+  <button onclick="deleteData()">削除</button>
 
   <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/torihikisaki-list.html'">
     一覧へ
