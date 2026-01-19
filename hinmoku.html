@@ -163,6 +163,16 @@
 
   <h2>品目マスタ</h2>
 
+  <h3>取引先（仕入先）</h3>
+
+  <button type="button" onclick="openTorihikisakiList()">取引先を選択</button>
+
+  <label>取引先ID</label>
+  <input id="torihikisaki_id" type="text" readonly style="background:#eee;">
+
+  <label>取引先名</label>
+  <input id="torihikisaki_name" type="text" readonly style="background:#eee;">
+
   <input id="id" type="hidden">
 
   <label>品目名</label>
@@ -179,16 +189,6 @@
 
   <label>備考</label>
   <textarea id="memo"></textarea>
-
-  <h3>取引先（仕入先）</h3>
-
-  <button type="button" onclick="openTorihikisakiList()">取引先を選択</button>
-
-  <label>取引先ID</label>
-  <input id="torihikisaki_id" type="text" readonly style="background:#eee;">
-
-  <label>取引先名</label>
-  <input id="torihikisaki_name" type="text" readonly style="background:#eee;">
 
   <button onclick="registerData()">登録</button>
   <button onclick="updateData()">更新</button>
