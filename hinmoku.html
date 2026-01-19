@@ -159,12 +159,10 @@
       const btnDelete = document.getElementById("btnDelete");
 
       if (id) {
-        // 一覧から選択 → 登録不可
         btnRegister.disabled = true;
         btnUpdate.disabled = false;
         btnDelete.disabled = false;
       } else {
-        // 新規
         btnRegister.disabled = false;
 
         if (name.trim() === "") {
@@ -172,7 +170,7 @@
           btnDelete.disabled = true;
         } else {
           btnUpdate.disabled = false;
-          btnDelete.disabled = true; // 新規は削除不可
+          btnDelete.disabled = true;
         }
       }
     }
@@ -181,8 +179,7 @@
     // 取引先一覧を開く
     // ----------------------------
     window.openTorihikisakiList = function() {
-      window.location.href =
-        "torihikisaki-list.html?from=hinmoku";
+      window.location.href = "torihikisaki-list.html?from=hinmoku";
     };
 
     // ----------------------------
