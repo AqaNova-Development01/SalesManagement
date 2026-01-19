@@ -26,8 +26,7 @@
     const selectedId = params.get("id");
 
     // ----------------------------
-    // 取引先コード採番（正式仕様）
-    // TK + 6桁連番（年月なし）
+    // 取引先コード採番（TK + 6桁連番）
     // ----------------------------
     async function generateTKCode() {
       const prefix = "TK";
@@ -54,7 +53,6 @@
         .eq("code", prefix);
 
       const num = String(nextNo).padStart(6, "0");
-
       return `${prefix}${num}`;
     }
 
@@ -88,13 +86,16 @@
       document.getElementById("bank_branch").value = data.bank_branch || "";
       document.getElementById("bank_account").value = data.bank_account || "";
       document.getElementById("account_holder").value = data.account_holder || "";
+
+      updateButtonState();
     }
 
     // ----------------------------
-    // 登録（新規）
+    // 登録
     // ----------------------------
     async function registerData() {
-      const code = await generateTKCode();  // ★正式仕様の採番
+      const code = await generateTKCode();
+      if (!code) return;
 
       const data = collectForm();
       data.id = code;
@@ -102,11 +103,10 @@
 
       const { error } = await supabase.from("torihikisaki").insert(data);
 
-      if (error) {
-        alert("登録エラー: " + error.message);
-      } else {
+      if (error) alert("登録エラー: " + error.message);
+      else {
         alert("登録しました（コード：" + code + "）");
-        location.href = "torihikisaki-list.html";
+        clearForm();
       }
     }
 
@@ -115,7 +115,6 @@
     // ----------------------------
     async function updateData() {
       const id = document.getElementById("id").value;
-
       const data = collectForm();
       data.updated_by = currentUser.id;
 
@@ -124,10 +123,10 @@
         .update(data)
         .eq("id", id);
 
-      if (error) {
-        alert("更新エラー: " + error.message);
-      } else {
+      if (error) alert("更新エラー: " + error.message);
+      else {
         alert("更新しました");
+        clearForm();
       }
     }
 
@@ -144,11 +143,10 @@
         .delete()
         .eq("id", id);
 
-      if (error) {
-        alert("削除エラー: " + error.message);
-      } else {
+      if (error) alert("削除エラー: " + error.message);
+      else {
         alert("削除しました");
-        location.href = "torihikisaki-list.html";
+        clearForm();
       }
     }
 
@@ -175,13 +173,68 @@
     }
 
     // ----------------------------
+    // フォームクリア
+    // ----------------------------
+    function clearForm() {
+      document.getElementById("id").value = "";
+      document.getElementById("kana").value = "";
+      document.getElementById("name").value = "";
+      document.getElementById("department").value = "";
+      document.getElementById("person").value = "";
+      document.getElementById("postal_code").value = "";
+      document.getElementById("address").value = "";
+      document.getElementById("tel").value = "";
+      document.getElementById("fax").value = "";
+      document.getElementById("invoice_number").value = "";
+      document.getElementById("billing_email_or_url").value = "";
+      document.getElementById("bank_name").value = "";
+      document.getElementById("bank_branch").value = "";
+      document.getElementById("bank_account").value = "";
+      document.getElementById("account_holder").value = "";
+
+      updateButtonState();
+    }
+
+    // ----------------------------
+    // ボタン活性/非活性制御
+    // ----------------------------
+    function updateButtonState() {
+      const id = document.getElementById("id").value;
+      const name = document.getElementById("name").value;
+
+      const btnRegister = document.getElementById("btnRegister");
+      const btnUpdate = document.getElementById("btnUpdate");
+      const btnDelete = document.getElementById("btnDelete");
+
+      if (id) {
+        btnRegister.disabled = true;
+        btnUpdate.disabled = false;
+        btnDelete.disabled = false;
+      } else {
+        btnRegister.disabled = false;
+
+        if (name.trim() === "") {
+          btnUpdate.disabled = true;
+          btnDelete.disabled = true;
+        } else {
+          btnUpdate.disabled = false;
+          btnDelete.disabled = true;
+        }
+      }
+    }
+
+    // ----------------------------
     // 初期処理
     // ----------------------------
     loadUser();
 
     if (selectedId) {
-      loadData(selectedId);  // 更新モード
+      loadData(selectedId);
+    } else {
+      updateButtonState();
     }
+
+    document.addEventListener("input", updateButtonState);
 
     window.registerData = registerData;
     window.updateData = updateData;
@@ -193,7 +246,6 @@
     input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
     button { width: 100%; padding: 12px; margin: 10px 0; }
     #id { background: #eee; }
-    #msg { margin-top: 15px; color: #d00; }
   </style>
 </head>
 
@@ -248,14 +300,12 @@
   <label>口座名義</label>
   <input id="account_holder" type="text">
 
-  <button onclick="registerData()">登録（自動採番）</button>
-  <button onclick="updateData()">更新</button>
-  <button onclick="deleteData()">削除</button>
+  <button id="btnRegister" onclick="registerData()">登録（自動採番）</button>
+  <button id="btnUpdate" onclick="updateData()">更新</button>
+  <button id="btnDelete" onclick="deleteData()">削除</button>
 
   <button onclick="location.href='torihikisaki-list.html'">一覧へ</button>
   <button onclick="location.href='index.html'">メニューへ</button>
-
-  <div id="msg"></div>
 
 </body>
 </html>
