@@ -25,10 +25,7 @@
 
       if (filter) {
         query = query.or(`
-          id.ilike.%${filter}%,
-          kana.ilike.%${filter}%,
-          name.ilike.%${filter}%,
-          person.ilike.%${filter}%
+            query = query.or(`id.ilike.%${filter}%,kana.ilike.%${filter}%,name.ilike.%${filter}%,person.ilike.%${filter}%`);
         `);
       }
 
@@ -99,3 +96,4 @@
 
 </body>
 </html>
+
