@@ -14,7 +14,9 @@
 
     let currentUser = null;
 
+    // ----------------------------
     // ログインユーザー取得
+    // ----------------------------
     async function loadUser() {
       const { data } = await supabase.auth.getUser();
       currentUser = data.user;
@@ -24,34 +26,52 @@
     const selectedId = params.get("id");
 
     // ----------------------------
-    // 採番（取引先コード）
+    // 取引先コード採番（正式仕様）
+    // TK + 6桁連番（年月なし）
     // ----------------------------
-    async function generateCode() {
-      const { data } = await supabase
+    async function generateTKCode() {
+      const prefix = "TK";
+
+      const { data, error } = await supabase
         .from("numbering")
-        .select("last_no")
-        .eq("doc_type", "torihikisaki")
+        .select("last_number")
+        .eq("code", prefix)
         .single();
 
-      const nextNo = data.last_no + 1;
+      if (error) {
+        alert("ナンバリング取得エラー: " + error.message);
+        return null;
+      }
+
+      const nextNo = data.last_number + 1;
 
       await supabase
         .from("numbering")
-        .update({ last_no: nextNo })
-        .eq("doc_type", "torihikisaki");
+        .update({
+          last_number: nextNo,
+          updated_at: new Date()
+        })
+        .eq("code", prefix);
 
-      return "TK" + String(nextNo).padStart(6, "0");
+      const num = String(nextNo).padStart(6, "0");
+
+      return `${prefix}${num}`;
     }
 
     // ----------------------------
-    // データ読込
+    // データ読込（更新時）
     // ----------------------------
     async function loadData(id) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("torihikisaki")
         .select("*")
         .eq("id", id)
         .single();
+
+      if (error) {
+        alert("データ取得エラー: " + error.message);
+        return;
+      }
 
       document.getElementById("id").value = data.id;
       document.getElementById("kana").value = data.kana || "";
@@ -71,10 +91,10 @@
     }
 
     // ----------------------------
-    // 登録
+    // 登録（新規）
     // ----------------------------
     async function registerData() {
-      const code = await generateCode();
+      const code = await generateTKCode();  // ★正式仕様の採番
 
       const data = collectForm();
       data.id = code;
@@ -82,8 +102,12 @@
 
       const { error } = await supabase.from("torihikisaki").insert(data);
 
-      document.getElementById("msg").textContent =
-        error ? "登録に失敗：" + error.message : "登録しました（コード：" + code + "）";
+      if (error) {
+        alert("登録エラー: " + error.message);
+      } else {
+        alert("登録しました（コード：" + code + "）");
+        location.href = "torihikisaki-list.html";
+      }
     }
 
     // ----------------------------
@@ -91,6 +115,7 @@
     // ----------------------------
     async function updateData() {
       const id = document.getElementById("id").value;
+
       const data = collectForm();
       data.updated_by = currentUser.id;
 
@@ -99,8 +124,11 @@
         .update(data)
         .eq("id", id);
 
-      document.getElementById("msg").textContent =
-        error ? "更新に失敗：" + error.message : "更新しました。";
+      if (error) {
+        alert("更新エラー: " + error.message);
+      } else {
+        alert("更新しました");
+      }
     }
 
     // ----------------------------
@@ -109,13 +137,19 @@
     async function deleteData() {
       const id = document.getElementById("id").value;
 
+      if (!confirm("本当に削除しますか？")) return;
+
       const { error } = await supabase
         .from("torihikisaki")
         .delete()
         .eq("id", id);
 
-      document.getElementById("msg").textContent =
-        error ? "削除に失敗：" + error.message : "削除しました。";
+      if (error) {
+        alert("削除エラー: " + error.message);
+      } else {
+        alert("削除しました");
+        location.href = "torihikisaki-list.html";
+      }
     }
 
     // ----------------------------
@@ -146,7 +180,7 @@
     loadUser();
 
     if (selectedId) {
-      loadData(selectedId);
+      loadData(selectedId);  // 更新モード
     }
 
     window.registerData = registerData;
@@ -158,6 +192,7 @@
     body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
     button { width: 100%; padding: 12px; margin: 10px 0; }
+    #id { background: #eee; }
     #msg { margin-top: 15px; color: #d00; }
   </style>
 </head>
@@ -166,8 +201,8 @@
 
   <h2>取引先マスタ</h2>
 
-  <label>取引先コード</label>
-  <input id="id" type="text" readonly style="background:#eee;">
+  <label>取引先コード（自動採番）</label>
+  <input id="id" type="text" readonly>
 
   <label>会社名カナ</label>
   <input id="kana" type="text">
@@ -217,13 +252,8 @@
   <button onclick="updateData()">更新</button>
   <button onclick="deleteData()">削除</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/torihikisaki-list.html'">
-    一覧へ
-  </button>
-
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/index.html'">
-    メニューに戻る
-  </button>
+  <button onclick="location.href='torihikisaki-list.html'">一覧へ</button>
+  <button onclick="location.href='index.html'">メニューへ</button>
 
   <div id="msg"></div>
 
