@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ƒpƒXƒ[ƒhƒŠƒZƒbƒg</title>
+  <title>ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ãƒªã‚»ãƒƒãƒˆ</title>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -18,12 +18,12 @@
 
       if (error) {
         document.getElementById("msg").textContent =
-          "‘—M‚É¸”s‚µ‚Ü‚µ‚½F" + error.message;
+          "é€ä¿¡ã«å¤±æ•—ã—ã¾ã—ãŸï¼š" + error.message;
         return;
       }
 
       document.getElementById("msg").textContent =
-        "ƒpƒXƒ[ƒhÄİ’èƒ[ƒ‹‚ğ‘—M‚µ‚Ü‚µ‚½B";
+        "ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰å†è¨­å®šãƒ¡ãƒ¼ãƒ«ã‚’é€ä¿¡ã—ã¾ã—ãŸã€‚";
     }
 
     window.resetPassword = resetPassword;
@@ -39,10 +39,10 @@
 
 <body>
 
-  <h2>ƒpƒXƒ[ƒhƒŠƒZƒbƒg</h2>
+  <h2>ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ãƒªã‚»ãƒƒãƒˆ</h2>
 
-  <input id="email" type="email" placeholder="ƒ[ƒ‹ƒAƒhƒŒƒX">
-  <button onclick="resetPassword()">‘—M</button>
+  <input id="email" type="email" placeholder="ãƒ¡ãƒ¼ãƒ«ã‚¢ãƒ‰ãƒ¬ã‚¹">
+  <button onclick="resetPassword()">é€ä¿¡</button>
 
   <div id="msg"></div>
 
