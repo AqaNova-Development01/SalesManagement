@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>アクア・ノヴァ 販売管理システム｜メニュー</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ログイン済みチェック
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
+      }
+    }
+
+    // ログアウト
+    async function logout() {
+      await supabase.auth.signOut();
+      window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
+    }
+
+    window.logout = logout;
+    checkLogin();
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 40px; max-width: 500px; margin: auto; }
+    h2 { margin-bottom: 30px; }
+    button {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>アクア・ノヴァ 販売管理システム｜メニュー</h2>
+
+  <!-- 各画面への遷移（絶対パス） -->
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/customer.html'">
+    取引先マスター
+  </button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/item.html'">
+    品目マスター
+  </button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/sales-entry.html'">
+    売上入力
+  </button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/purchase-entry.html'">
+    仕入入力
+  </button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/payment-entry.html'">
+    入金入力
+  </button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/receipt-entry.html'">
+    出金入力
+  </button>
+
+  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/user-settings.html'">
+    ユーザー設定
+  </button>
+
+  <button onclick="logout()">ログアウト</button>
+
+</body>
+</html>
