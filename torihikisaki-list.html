@@ -12,7 +12,7 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-    // ★ 呼び出し元を取得（torihikisaki / hinmoku）
+    // ★ 呼び出し元を取得（hinmoku / torihikisaki）
     const params = new URLSearchParams(window.location.search);
     const from = params.get("from");
 
@@ -56,7 +56,8 @@
       `;
 
       data.forEach(row => {
-        const safeId = JSON.stringify(row.id); // onclick 安全化
+        // ★ onclick の引数を安全にする
+        const safeId = JSON.stringify(row.id);
 
         html += `
           <tr>
@@ -91,10 +92,8 @@
     // ----------------------------
     window.goNew = function() {
       if (from === "hinmoku") {
-        // 品目画面へ戻る（取引先IDなし）
         window.location.href = "hinmoku.html";
       } else {
-        // 取引先画面へ戻る（新規モード）
         window.location.href = "torihikisaki.html";
       }
     };
