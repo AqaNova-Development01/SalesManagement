@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>パスワードリセット</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function resetPassword() {
+      const email = document.getElementById("email").value;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+
+      if (error) {
+        document.getElementById("msg").textContent =
+          "送信に失敗しました：" + error.message;
+        return;
+      }
+
+      document.getElementById("msg").textContent =
+        "パスワード再設定メールを送信しました。";
+    }
+
+    window.resetPassword = resetPassword;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 40px; max-width: 400px; margin: auto; }
+    input { width: 100%; padding: 10px; margin: 10px 0; }
+    button { width: 100%; padding: 10px; }
+    #msg { margin-top: 10px; }
+  </style>
+</head>
+
+<body>
+
+  <h2>パスワードリセット</h2>
+
+  <input id="email" type="email" placeholder="メールアドレス">
+  <button onclick="resetPassword()">送信</button>
+
+  <div id="msg"></div>
+
+</body>
+</html>
