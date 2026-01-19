@@ -14,7 +14,6 @@
 
     const params = new URLSearchParams(window.location.search);
     const torihikisaki_id = params.get("torihikisaki_id");
-    const from = params.get("from"); // hinmoku から呼ばれたか判定
 
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
@@ -24,28 +23,43 @@
         .select("*, torihikisaki:torihikisaki_id(name)")
         .order("name");
 
-      // ★ 前画面の取引先IDで自動絞り込み
+      // 取引先IDでの自動絞り込み
       if (torihikisaki_id) {
         query = query.eq("torihikisaki_id", torihikisaki_id);
       }
 
-      // ★ 検索フィルタ
+      // Supabase の or() は JOIN カラムを検索できない
       if (filter) {
         query = query.or(`
           name.ilike.%${filter}%,
-          torihikisaki.name.ilike.%${filter}%,
+          unit.ilike.%${filter}%,
           torihikisaki_id.ilike.%${filter}%
         `);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
         return;
       }
 
-      let html = "<table><tr><th>品目名</th><th>取引先</th><th>単価</th><th>選択</th></tr>";
+      // 取引先名検索は JS 側でフィルタ
+      if (filter) {
+        data = data.filter(row =>
+          row.torihikisaki?.name?.includes(filter)
+        );
+      }
+
+      let html = `
+        <table>
+          <tr>
+            <th>品目名</th>
+            <th>取引先</th>
+            <th>単価</th>
+            <th>選択</th>
+          </tr>
+      `;
 
       data.forEach(row => {
         html += `
@@ -62,10 +76,8 @@
       document.getElementById("listArea").innerHTML = html;
     }
 
-    // ★ 選択時の遷移
     window.selectRow = function(id) {
-      window.location.href =
-        "https://aqanova-development01.github.io/SalesManagement/hinmoku.html?id=" + id;
+      window.location.href = "hinmoku.html?id=" + id;
     };
 
     window.loadList = loadList;
@@ -89,9 +101,7 @@
   <div id="listArea"></div>
 
   <br>
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/hinmoku.html'">
-    新規作成へ戻る
-  </button>
+  <button onclick="location.href='hinmoku.html'">新規作成へ</button>
 
 </body>
 </html>
