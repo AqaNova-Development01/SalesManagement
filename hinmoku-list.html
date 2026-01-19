@@ -30,7 +30,7 @@
 
       // Supabase の or() は JOIN カラムを検索できない
       if (filter) {
-        query = query.or(`id.ilike.%${filter}%,kana.ilike.%${filter}%,name.ilike.%${filter}%,person.ilike.%${filter}%`);
+          query = query.or(`name.ilike.%${filter}%,unit.ilike.%${filter}%,torihikisaki_id.ilike.%${filter}%`);
       }
 
       let { data, error } = await query;
@@ -101,4 +101,5 @@
 
 </body>
 </html>
+
 
