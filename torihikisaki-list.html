@@ -27,12 +27,7 @@
         .order("kana");
 
       if (filter) {
-        query = query.or(`
-          id.ilike.%${filter}%,
-          kana.ilike.%${filter}%,
-          name.ilike.%${filter}%,
-          person.ilike.%${filter}%
-        `);
+        query = query.or(`id.ilike.%${filter}%,kana.ilike.%${filter}%,person.ilike.%${filter}%`);
       }
 
       let { data, error } = await query;
@@ -123,3 +118,4 @@
 
 </body>
 </html>
+
