@@ -94,6 +94,14 @@
     // 登録
     // ----------------------------
     async function registerData() {
+
+      const name = document.getElementById("name").value.trim();
+      // 入力チェック
+      if (!name) {
+        alert("会社名を入力してください");
+        return;
+      }
+
       const code = await generateTKCode();
       if (!code) return;
 
