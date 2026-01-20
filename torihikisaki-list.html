@@ -13,8 +13,11 @@
     );
 
     const params = new URLSearchParams(window.location.search);
-    const from = params.get("from");
+    const from = params.get("from");   // 呼び出し元画面名（例：hinmoku, uriage, shiire など）
 
+    // ----------------------------
+    // 一覧読み込み
+    // ----------------------------
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
 
@@ -24,7 +27,12 @@
         .order("kana");
 
       if (filter) {
-        query = query.or(`id.ilike.%${filter}%,kana.ilike.%${filter}%,name.ilike.%${filter}%,person.ilike.%${filter}%`);
+        query = query.or(`
+          id.ilike.%${filter}%,
+          kana.ilike.%${filter}%,
+          name.ilike.%${filter}%,
+          person.ilike.%${filter}%
+        `);
       }
 
       let { data, error } = await query;
@@ -38,21 +46,20 @@
         <table>
           <tr>
             <th>コード</th>
-            <th>カナ</th>
             <th>会社名</th>
+            <th>カナ</th>
             <th>担当者</th>
             <th>選択</th>
           </tr>
       `;
 
       data.forEach(row => {
-        // ★ onclick が壊れないようにエスケープ
         const safeId = row.id.replace(/'/g, "\\'");
         html += `
           <tr>
             <td>${row.id}</td>
-            <td>${row.kana || ""}</td>
             <td>${row.name}</td>
+            <td>${row.kana || ""}</td>
             <td>${row.person || ""}</td>
             <td><button onclick="selectRow('${safeId}')">選択</button></td>
           </tr>
@@ -64,28 +71,31 @@
     }
 
     // ----------------------------
-    // 行選択 → 呼び出し元に応じて戻る
+    // 行選択 → 呼び出し元に戻る（汎用版）
     // ----------------------------
     function selectRow(id) {
-      if (from === "hinmoku") {
-        window.location.href = "hinmoku.html?torihikisaki_id=" + id;
+      if (from) {
+        // 例：from=uriage → uriage.html?torihikisaki_id=TK00001
+        window.location.href = `${from}.html?torihikisaki_id=${id}`;
       } else {
+        // 呼び出し元が指定されていない場合は取引先画面へ
         window.location.href = "torihikisaki.html?id=" + id;
       }
     }
 
     // ----------------------------
-    // 新規作成 → 呼び出し元に応じて戻る
+    // 新規作成 → 呼び出し元に応じて遷移
     // ----------------------------
     function goNew() {
-      if (from === "hinmoku") {
-        window.location.href = "hinmoku.html";
+      if (from) {
+        // 例：from=hinmoku → hinmoku.html（新規）
+        window.location.href = `${from}.html`;
       } else {
         window.location.href = "torihikisaki.html";
       }
     }
 
-    // ★ module スコープから公開
+    // 公開
     window.selectRow = selectRow;
     window.goNew = goNew;
     window.loadList = loadList;
@@ -109,9 +119,7 @@
   <div id="listArea"></div>
 
   <br>
-  <!-- ★ 新規作成ボタンを goNew() に変更 -->
   <button onclick="goNew()">新規作成へ</button>
 
 </body>
 </html>
-
