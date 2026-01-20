@@ -21,6 +21,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const selectedId = params.get("id");
+    const from = params.get("from");
 
     // ----------------------------
     // 仕入ID採番（SH + YYMM + 6桁）
@@ -227,43 +228,45 @@
     }
 
     // ----------------------------
-    // 初期処理
+    // ★★★ 初期処理（仕入は2パターンのみ） ★★★
     // ----------------------------
     loadUser();
 
+    // ① 取引先一覧から来た場合
+    if (from === "torihikisaki") {
+      const tid = params.get("torihikisaki_id");
+      if (tid) {
+        document.getElementById("torihikisaki_id").value = tid;
+        loadTorihikisakiName();
+      }
+    }
 
-// ----------------------------
-// ② 取引先一覧から来た場合（IDだけ渡される）
-// ----------------------------
-if (from === "torihikisaki") {
-  const tid = params.get("torihikisaki_id");
-  if (tid) {
-    document.getElementById("torihikisaki_id").value = tid;
-    loadTorihikisakiName();   // ★ 取引先TBLから取得
-  }
-}
+    // ② 品目一覧から来た場合
+    if (from === "hinmoku") {
 
-// ----------------------------
-// ③ 品目一覧から来た場合（IDだけ渡される）
-// ----------------------------
-if (from === "hinmoku") {
-  const tid = params.get("torihikisaki_id");
-  if (tid) {
-    document.getElementById("torihikisaki_id").value = tid;
-    loadTorihikisakiName();   // ★ 取引先TBLから取得
-  }  const hid = params.get("hinmoku_id");
-  if (hid) {
-    document.getElementById("hinmoku_id").value = hid;
-    loadHinmokuInfo();   // ★ 品目TBLから取得
-  }
+      const tid = params.get("torihikisaki_id");
+      if (tid) {
+        document.getElementById("torihikisaki_id").value = tid;
+        loadTorihikisakiName();
+      }
 
+      const hid = params.get("hinmoku_id");
+      if (hid) {
+        document.getElementById("hinmoku_id").value = hid;
+        loadHinmokuInfo();
+      }
+    }
 
+    // ③ 通常の更新 or 新規
     if (selectedId) {
       loadData(selectedId);
     } else {
       updateButtonState();
     }
 
+    // ----------------------------
+    // イベント登録
+    // ----------------------------
     document.addEventListener("input", calcAmount);
 
     window.registerData = registerData;
