@@ -28,8 +28,12 @@
     const item_from_mitumori = params.get("item");
     const qty_from_mitumori = params.get("qty");
     const price_from_mitumori = params.get("price");
+    const unit_from_mitumori = params.get("unit");
+    const tax_from_mitumori = params.get("tax_rate");
     const torihikisaki_from_mitumori = params.get("torihikisaki_id");
     const hinmoku_from_mitumori = params.get("hinmoku_id");
+
+    const from = params.get("from");
 
     // ----------------------------
     // 売上ID採番（UR + YYMM + 6桁）
@@ -236,61 +240,67 @@
     }
 
     // ----------------------------
-    // 初期処理
+    // ★★★ 初期処理（3パターン完全対応版） ★★★
     // ----------------------------
     loadUser();
 
-    // 見積明細からのコピー
+    // ① 見積明細から来た場合
     if (from_mitumori === "1") {
+
       document.getElementById("torihikisaki_id").value = torihikisaki_from_mitumori;
       document.getElementById("hinmoku_id").value = hinmoku_from_mitumori;
 
       document.getElementById("item").value = item_from_mitumori;
       document.getElementById("quantity").value = qty_from_mitumori;
       document.getElementById("price").value = price_from_mitumori;
+      document.getElementById("unit").value = unit_from_mitumori;
+      document.getElementById("tax_rate").value = tax_from_mitumori;
 
       document.getElementById("memo").value =
         "見積番号：" + mitumori_no;
 
-      loadTorihikisakiName();
+      loadTorihikisakiName(); // 取引先名だけ補完
       calcAmount();
+      updateButtonState();
+      // ★ 品目マスタ検索はしない
+      return;
     }
 
-// ----------------------------
-// ② 取引先一覧から来た場合（IDだけ渡される）
-// ----------------------------
-if (from === "torihikisaki") {
-  const tid = params.get("torihikisaki_id");
-  if (tid) {
-    document.getElementById("torihikisaki_id").value = tid;
-    loadTorihikisakiName();   // ★ 取引先TBLから取得
-  }
-}
+    // ② 取引先一覧から来た場合
+    if (from === "torihikisaki") {
+      const tid = params.get("torihikisaki_id");
+      if (tid) {
+        document.getElementById("torihikisaki_id").value = tid;
+        loadTorihikisakiName();
+      }
+    }
 
-// ----------------------------
-// ③ 品目一覧から来た場合（IDだけ渡される）
-// ----------------------------
-if (from === "hinmoku") {
-  const tid = params.get("torihikisaki_id");
-  if (tid) {
-    document.getElementById("torihikisaki_id").value = tid;
-    loadTorihikisakiName();   // ★ 取引先TBLから取得
-  }  const hid = params.get("hinmoku_id");
-  if (hid) {
-    document.getElementById("hinmoku_id").value = hid;
-    loadHinmokuInfo();   // ★ 品目TBLから取得
-  }
-}
+    // ③ 品目一覧から来た場合
+    if (from === "hinmoku") {
 
+      const tid = params.get("torihikisaki_id");
+      if (tid) {
+        document.getElementById("torihikisaki_id").value = tid;
+        loadTorihikisakiName();
+      }
 
+      const hid = params.get("hinmoku_id");
+      if (hid) {
+        document.getElementById("hinmoku_id").value = hid;
+        loadHinmokuInfo();
+      }
+    }
 
+    // ④ 通常の更新 or 新規
     if (selectedId) {
       loadData(selectedId);
     } else {
       updateButtonState();
-      
     }
 
+    // ----------------------------
+    // イベント登録
+    // ----------------------------
     document.addEventListener("input", calcAmount);
 
     window.registerData = registerData;
@@ -323,6 +333,69 @@ if (from === "hinmoku") {
     #id, #torihikisaki_id, #torihikisaki_name, #hinmoku_id { background: #eee; }
   </style>
 </head>
+
+
+<body>
+
+  <h2>仕入入力</h2>
+
+  <h3>仕入先</h3>
+  <button onclick="openTorihikisakiList()">仕入先一覧へ</button>
+  <label>仕入先ID</label>
+  <input id="torihikisaki_id" type="text" readonly>
+  <label>仕入先名</label>
+  <input id="torihikisaki_name" type="text" readonly>
+
+  <h3>仕入情報</h3>
+  <label>仕入ID</label>
+  <input id="id" type="text" readonly>
+
+  <h3>品目</h3>
+  <button onclick="openHinmokuList()">品目一覧へ</button>
+
+  <label>品目ID</label>
+  <input id="hinmoku_id" type="text" readonly>
+
+  <label>品目名</label>
+  <input id="item" type="text" readonly>
+
+  <label>単位</label>
+  <input id="unit" type="text" readonly>
+
+  <label>単価</label>
+  <input id="price" type="number">
+
+  <label>数量</label>
+  <input id="quantity" type="number">
+
+  <label>金額（税抜）</label>
+  <input id="amount" type="number" readonly>
+
+  <label>税率</label>
+  <input id="tax_rate" type="number" readonly>
+
+  <h3>日付</h3>
+  <label>出荷日</label>
+  <input id="ship_date" type="date">
+
+  <label>納品日</label>
+  <input id="delivery_date" type="date">
+
+  <label>計上日</label>
+  <input id="keijo_date" type="date">
+
+  <h3>備考</h3>
+  <textarea id="memo"></textarea>
+
+  <button id="btnRegister" onclick="registerData()">登録</button>
+  <button id="btnUpdate" onclick="updateData()">更新</button>
+  <button id="btnDelete" onclick="deleteData()">削除</button>
+
+  <button onclick="goList()">一覧へ</button>
+  <button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+
 
 <body>
 
