@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>仕入一覧</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const torihikisaki_from_shiire = params.get("torihikisaki_id") || "";
+
+    // ----------------------------
+    // 年月ドロップダウン初期化
+    // ----------------------------
+    function initYearMonth() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+
+      const yearSel = document.getElementById("year");
+      const monthSel = document.getElementById("month");
+
+      for (let y = year - 5; y <= year + 1; y++) {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        if (y === year) opt.selected = true;
+        yearSel.appendChild(opt);
+      }
+
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement("option");
+        opt.value = m.toString().padStart(2, "0");
+        opt.textContent = m;
+        if (m === month) opt.selected = true;
+        monthSel.appendChild(opt);
+      }
+    }
+
+    // ----------------------------
+    // 取引先一覧をドロップダウンにセット
+    // ----------------------------
+    async function loadTorihikisakiList() {
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("id, name")
+        .order("id");
+
+      const list = document.getElementById("torihikisaki_list");
+
+      data.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.name;
+        opt.dataset.id = t.id;
+        list.appendChild(opt);
+      });
+    }
+
+    // ----------------------------
+    // 取引先名 → ID 自動セット
+    // ----------------------------
+    function onTorihikisakiNameInput() {
+      const name = document.getElementById("torihikisaki_name").value;
+      const list = document.getElementById("torihikisaki_list").options;
+
+      for (let opt of list) {
+        if (opt.value === name) {
+          document.getElementById("torihikisaki_id").value = opt.dataset.id;
+          return;
+        }
+      }
+    }
+
+    // ----------------------------
+    // 検索処理
+    // ----------------------------
+    async function search() {
+      const year = document.getElementById("year").value;
+      const month = document.getElementById("month").value;
+      const yymm = year.toString().slice(2) + month;
+
+      const torihikisaki_id = document.getElementById("torihikisaki_id").value;
+
+      let query = supabase
+        .from("shiire")
+        .select(`
+          id,
+          torihikisaki_id,
+          hinmoku_id,
+          item,
+          quantity,
+          price,
+          amount,
+          delivery_date,
+          keijo_date,
+          torihikisaki(name)
+        `)
+        .like("id", `%SH${yymm}%`)
+        .order("id", { ascending: false });
+
+      // 仕入画面から取引先ID連携あり → 固定
+      if (torihikisaki_from_shiire) {
+        query = query.eq("torihikisaki_id", torihikisaki_from_shiire);
+      } else {
+        if (torihikisaki_id) {
+          query = query.eq("torihikisaki_id", torihikisaki_id);
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        alert("検索エラー: " + error.message);
+        return;
+      }
+
+      renderTable(data || []);
+    }
+
+    // ----------------------------
+    // 一覧描画
+    // ----------------------------
+    function renderTable(rows) {
+      const tbody = document.getElementById("list");
+      tbody.innerHTML = "";
+
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="9">該当データがありません</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      rows.forEach(r => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${r.id}</td>
+          <td>${r.torihikisaki?.name || ""}</td>
+          <td>${r.item}</td>
+          <td>${r.quantity}</td>
+          <td>${r.price}</td>
+          <td>${r.amount}</td>
+          <td>${r.delivery_date || ""}</td>
+          <td>${r.keijo_date || ""}</td>
+          <td>
+            <button onclick="editShiire('${r.id}')">編集</button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ----------------------------
+    // 編集画面へ
+    // ----------------------------
+    window.editShiire = function(id) {
+      location.href = `shiire.html?id=${id}`;
+    };
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      initYearMonth();
+      await loadTorihikisakiList();
+
+      if (torihikisaki_from_shiire) {
+        document.getElementById("torihikisaki_id").value = torihikisaki_from_shiire;
+        document.getElementById("torihikisaki_id").readOnly = true;
+        document.getElementById("torihikisaki_name").readOnly = true;
+      }
+
+      search();
+    });
+
+    window.search = search;
+    window.onTorihikisakiNameInput = onTorihikisakiNameInput;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    input, select { padding: 6px; margin: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #eee; }
+  </style>
+</head>
+
+<body>
+
+  <h2>仕入一覧</h2>
+
+  <h3>検索条件</h3>
+
+  <label>年</label>
+  <select id="year"></select>
+
+  <label>月</label>
+  <select id="month"></select>
+
+  <br>
+
+  <label>仕入先ID</label>
+  <input id="torihikisaki_id" type="text">
+
+  <label>仕入先名</label>
+  <input id="torihikisaki_name" list="torihikisaki_list" oninput="onTorihikisakiNameInput()">
+  <datalist id="torihikisaki_list"></datalist>
+
+  <br>
+
+  <button onclick="search()">検索</button>
+  <button onclick="location.reload()">クリア</button>
+
+  <h3>一覧</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>仕入ID</th>
+        <th>仕入先名</th>
+        <th>品目名</th>
+        <th>数量</th>
+        <th>単価</th>
+        <th>金額</th>
+        <th>納品日</th>
+        <th>計上日</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+
+  <button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+</html>
