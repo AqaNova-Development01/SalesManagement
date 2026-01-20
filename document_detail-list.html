@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>見積明細一覧</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const torihikisaki_from_uriage = params.get("torihikisaki_id") || "";
+
+    // ----------------------------
+    // 取引先名 自動取得
+    // ----------------------------
+    async function loadTorihikisakiName() {
+      const id = document.getElementById("torihikisaki_id").value;
+      if (!id) {
+        document.getElementById("torihikisaki_name").value = "";
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("torihikisaki")
+        .select("name")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        document.getElementById("torihikisaki_name").value = "";
+        return;
+      }
+
+      document.getElementById("torihikisaki_name").value = data?.name || "";
+    }
+
+    // ----------------------------
+    // 検索処理
+    // ----------------------------
+    async function search() {
+      const yymm = document.getElementById("yymm").value.trim();
+      const torihikisaki_id = document.getElementById("torihikisaki_id").value.trim();
+      const torihikisaki_name = document.getElementById("torihikisaki_name").value.trim();
+      const doc_no = document.getElementById("doc_no").value.trim();
+
+      // document と JOIN して取引先IDを取得
+      let query = supabase
+        .from("document_detail")
+        .select(`
+          id,
+          document_id,
+          item,
+          quantity,
+          unit,
+          price,
+          amount,
+          tax_rate,
+          hinmoku_id,
+          document (
+            id,
+            torihikisaki_id
+          )
+        `)
+        .order("document_id", { ascending: false });
+
+      // 年月（YYMM） → 見積番号の先頭6桁に含まれる
+      if (yymm) {
+        query = query.like("document_id", `%${yymm}%`);
+      }
+
+      // 売上画面から取引先ID連携ありの場合 → 取引先固定
+      if (torihikisaki_from_uriage) {
+        query = query.eq("document.torihikisaki_id", torihikisaki_from_uriage);
+      } else {
+        // 取引先IDで絞り込み
+        if (torihikisaki_id) {
+          query = query.eq("document.torihikisaki_id", torihikisaki_id);
+        }
+
+        // 取引先名で絞り込み（document に torihikisaki_name を持たせていない前提なので、
+        // ここでは torihikisaki_name での検索は行わず、将来 JOIN 拡張の余地として残す）
+        // 必要になったら document に torihikisaki_name をコピーしておくのが一番シンプル。
+      }
+
+      // 見積番号で絞り込み
+      if (doc_no) {
+        query = query.like("document_id", `%${doc_no}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        alert("検索エラー: " + error.message);
+        return;
+      }
+
+      renderTable(data || []);
+    }
+
+    // ----------------------------
+    // 一覧描画
+    // ----------------------------
+    function renderTable(rows) {
+      const tbody = document.getElementById("list");
+      tbody.innerHTML = "";
+
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="7">該当するデータがありません</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      rows.forEach(r => {
+        const tr = document.createElement("tr");
+
+        const doc_id = r.document_id || "";
+        const detail_id = r.id || "";
+        const item = r.item || "";
+        const qty = r.quantity || 0;
+        const unit = r.unit || "";
+        const price = r.price || 0;
+        const amount = r.amount || 0;
+        const torihikisaki_id = r.document?.torihikisaki_id || "";
+        const hinmoku_id = r.hinmoku_id || "";
+
+        tr.innerHTML = `
+          <td>${doc_id}</td>
+          <td>${detail_id}</td>
+          <td>${item}</td>
+          <td>${qty}</td>
+          <td>${unit}</td>
+          <td>${price}</td>
+          <td>${amount}</td>
+          <td>
+            <button onclick="copyToUriage(
+              '${doc_id}',
+              '${escapeForUrl(item)}',
+              '${qty}',
+              '${price}',
+              '${torihikisaki_id}',
+              '${hinmoku_id}'
+            )">
+              売上にコピー
+            </button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ----------------------------
+    // URL 用エスケープ（シンプル版）
+    // ----------------------------
+    function escapeForUrl(str) {
+      return encodeURIComponent(str ?? "");
+    }
+
+    // ----------------------------
+    // 売上画面へコピー
+    // ----------------------------
+    window.copyToUriage = function(doc_id, item, qty, price, torihikisaki_id, hinmoku_id) {
+      const url =
+        `uriage.html?from_mitumori=1` +
+        `&mitumori_no=${encodeURIComponent(doc_id)}` +
+        `&item=${item}` +
+        `&qty=${qty}` +
+        `&price=${price}` +
+        `&torihikisaki_id=${encodeURIComponent(torihikisaki_id)}` +
+        `&hinmoku_id=${encodeURIComponent(hinmoku_id)}`;
+
+      location.href = url;
+    };
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      // 売上画面から取引先IDが連携されている場合 → 固定
+      if (torihikisaki_from_uriage) {
+        const tIdInput = document.getElementById("torihikisaki_id");
+        const tNameInput = document.getElementById("torihikisaki_name");
+
+        tIdInput.value = torihikisaki_from_uriage;
+        tIdInput.readOnly = true;
+
+        await loadTorihikisakiName();
+        tNameInput.readOnly = true;
+      }
+
+      // 初期表示で自動検索してもよいならここで search() を呼ぶ
+      // 今回はユーザー操作で検索する前提なので呼ばない
+    });
+
+    window.search = search;
+    window.loadTorihikisakiName = loadTorihikisakiName;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    input { padding: 6px; margin: 4px; }
+    button { padding: 6px 10px; margin: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #eee; }
+  </style>
+</head>
+
+<body>
+
+  <h2>見積明細一覧</h2>
+
+  <h3>検索条件</h3>
+
+  <div>
+    <label>年月（YYMM）</label>
+    <input id="yymm" type="text" placeholder="例：2501">
+  </div>
+
+  <div>
+    <label>取引先ID</label>
+    <input id="torihikisaki_id" type="text" onblur="loadTorihikisakiName()">
+  </div>
+
+  <div>
+    <label>取引先名</label>
+    <input id="torihikisaki_name" type="text" readonly>
+  </div>
+
+  <div>
+    <label>見積番号</label>
+    <input id="doc_no" type="text">
+  </div>
+
+  <div>
+    <button onclick="search()">検索</button>
+    <button onclick="location.reload()">クリア</button>
+  </div>
+
+  <h3>一覧</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>見積番号</th>
+        <th>明細ID</th>
+        <th>品目名</th>
+        <th>数量</th>
+        <th>単位</th>
+        <th>単価</th>
+        <th>金額</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+
+  <button onclick="history.back()">戻る</button>
+
+</body>
+</html>
