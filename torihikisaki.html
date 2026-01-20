@@ -26,7 +26,7 @@
     const selectedId = params.get("id");
 
     // ----------------------------
-    // 取引先コード採番（TK + 6桁連番）
+    // 取引先コード採番（TK + 5桁連番）
     // ----------------------------
     async function generateTKCode() {
       const prefix = "TK";
@@ -52,7 +52,7 @@
         })
         .eq("code", prefix);
 
-      const num = String(nextNo).padStart(6, "0");
+      const num = String(nextNo).padStart(5, "0");
       return `${prefix}${num}`;
     }
 
