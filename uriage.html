@@ -256,14 +256,14 @@
       loadHinmokuInfo();
       calcAmount();
     }
-    if (from === "torihikisaki") {
+    else if (from === "torihikisaki") {
       const tid = params.get("torihikisaki_id");
       if (tid) {
         document.getElementById("torihikisaki_id").value = tid;
         loadTorihikisakiName();
       }
     }
-    if (from === "hinmoku") {
+    else if (from === "hinmoku") {
       const tid = params.get("torihikisaki_id");
       document.getElementById("torihikisaki_id").value = tid;
       loadTorihikisakiName();
@@ -273,7 +273,7 @@
         loadHinmokuInfo();
       }
     }
-    if (selectedId) {
+    else if (selectedId) {
       loadData(selectedId);
     } else {
       updateButtonState();
@@ -374,3 +374,4 @@
 
 </body>
 </html>
+
