@@ -24,6 +24,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const selectedId = params.get("id");
+    const from = params.get("from");   // ★ 呼び出し元画面
 
     // ----------------------------
     // 取引先コード採番（TK + 5桁連番）
@@ -91,12 +92,10 @@
     }
 
     // ----------------------------
-    // 登録
+    // 登録（入力チェック追加）
     // ----------------------------
     async function registerData() {
-
       const name = document.getElementById("name").value.trim();
-      // 入力チェック
       if (!name) {
         alert("会社名を入力してください");
         return;
@@ -119,9 +118,15 @@
     }
 
     // ----------------------------
-    // 更新
+    // 更新（入力チェック追加）
     // ----------------------------
     async function updateData() {
+      const name = document.getElementById("name").value.trim();
+      if (!name) {
+        alert("会社名を入力してください");
+        return;
+      }
+
       const id = document.getElementById("id").value;
       const data = collectForm();
       data.updated_by = currentUser.id;
@@ -232,6 +237,17 @@
     }
 
     // ----------------------------
+    // 一覧へ戻る（呼び出し元対応）
+    // ----------------------------
+    function goList() {
+      if (from) {
+        window.location.href = `${from}.html`;
+      } else {
+        window.location.href = "torihikisaki-list.html";
+      }
+    }
+
+    // ----------------------------
     // 初期処理
     // ----------------------------
     loadUser();
@@ -247,73 +263,10 @@
     window.registerData = registerData;
     window.updateData = updateData;
     window.deleteData = deleteData;
+    window.goList = goList;
   </script>
 
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
-    button { width: 100%; padding: 12px; margin: 10px 0; }
-    #id { background: #eee; }
-  </style>
-</head>
-
-<body>
-
-  <h2>取引先マスタ</h2>
-
-  <label>取引先コード（自動採番）</label>
-  <input id="id" type="text" readonly>
-
-  <label>会社名カナ</label>
-  <input id="kana" type="text">
-
-  <label>会社名</label>
-  <input id="name" type="text">
-
-  <label>部署</label>
-  <input id="department" type="text">
-
-  <label>担当者</label>
-  <input id="person" type="text">
-
-  <label>郵便番号</label>
-  <input id="postal_code" type="text">
-
-  <label>住所</label>
-  <textarea id="address"></textarea>
-
-  <label>電話番号</label>
-  <input id="tel" type="text">
-
-  <label>FAX番号</label>
-  <input id="fax" type="text">
-
-  <label>インボイス番号</label>
-  <input id="invoice_number" type="text">
-
-  <label>請求書送付先（メール or URL）</label>
-  <input id="billing_email_or_url" type="text">
-
-  <h3>振込先情報</h3>
-
-  <label>銀行名</label>
-  <input id="bank_name" type="text">
-
-  <label>支店名</label>
-  <input id="bank_branch" type="text">
-
-  <label>口座番号＋種別</label>
-  <input id="bank_account" type="text">
-
-  <label>口座名義</label>
-  <input id="account_holder" type="text">
-
-  <button id="btnRegister" onclick="registerData()">登録（自動採番）</button>
-  <button id="btnUpdate" onclick="updateData()">更新</button>
-  <button id="btnDelete" onclick="deleteData()">削除</button>
-
-  <button onclick="location.href='torihikisaki-list.html'">一覧へ</button>
-  <button onclick="location.href='index.html'">メニューへ</button>
-
-</body>
-</html>
+    button { width: 100%; padding: 12px; margin: 
