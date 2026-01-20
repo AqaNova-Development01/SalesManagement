@@ -253,14 +253,42 @@
         "見積番号：" + mitumori_no;
 
       loadTorihikisakiName();
-      loadHinmokuInfo();
       calcAmount();
     }
+
+// ----------------------------
+// ② 取引先一覧から来た場合（IDだけ渡される）
+// ----------------------------
+if (from === "torihikisaki") {
+  const tid = params.get("torihikisaki_id");
+  if (tid) {
+    document.getElementById("torihikisaki_id").value = tid;
+    loadTorihikisakiName();   // ★ 取引先TBLから取得
+  }
+}
+
+// ----------------------------
+// ③ 品目一覧から来た場合（IDだけ渡される）
+// ----------------------------
+if (from === "hinmoku") {
+  const tid = params.get("torihikisaki_id");
+  if (tid) {
+    document.getElementById("torihikisaki_id").value = tid;
+    loadTorihikisakiName();   // ★ 取引先TBLから取得
+  }  const hid = params.get("hinmoku_id");
+  if (hid) {
+    document.getElementById("hinmoku_id").value = hid;
+    loadHinmokuInfo();   // ★ 品目TBLから取得
+  }
+}
+
+
 
     if (selectedId) {
       loadData(selectedId);
     } else {
       updateButtonState();
+      
     }
 
     document.addEventListener("input", calcAmount);
