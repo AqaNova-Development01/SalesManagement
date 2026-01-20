@@ -24,6 +24,22 @@
     const torihikisaki_id_from_prev = params.get("torihikisaki_id");
 
     // ----------------------------
+    // 品目コード採番（RPC）
+    // ----------------------------
+    async function generateHinmokuCode(tid) {
+      const { data, error } = await supabase.rpc("get_next_hinmoku_code", {
+        tid: tid
+      });
+
+      if (error) {
+        alert("採番エラー: " + error.message);
+        return null;
+      }
+
+      return data; // HM0000100001 など
+    }
+
+    // ----------------------------
     // 取引先名 自動取得
     // ----------------------------
     async function loadTorihikisakiName() {
@@ -62,17 +78,32 @@
     }
 
     // ----------------------------
-    // 登録
+    // 登録（採番対応）
     // ----------------------------
     async function registerData() {
+      const tid = document.getElementById("torihikisaki_id").value;
+
+      if (!tid) {
+        alert("取引先を選択してください");
+        return;
+      }
+      if (!name) {
+        alert("品目名を入力してください");
+        return;
+      }
+
+      const code = await generateHinmokuCode(tid);
+      if (!code) return;
+
       const data = collectForm();
+      data.id = code;
       data.created_by = currentUser.id;
 
       const { error } = await supabase.from("hinmoku").insert(data);
 
       if (error) alert("登録エラー: " + error.message);
       else {
-        alert("登録しました");
+        alert("登録しました（コード：" + code + "）");
         clearForm();
       }
     }
@@ -163,15 +194,9 @@
         btnUpdate.disabled = false;
         btnDelete.disabled = false;
       } else {
-        btnRegister.disabled = false;
-
-        if (name.trim() === "") {
-          btnUpdate.disabled = true;
-          btnDelete.disabled = true;
-        } else {
-          btnUpdate.disabled = false;
-          btnDelete.disabled = true;
-        }
+        btnRegister.disabled = name.trim() === "";
+        btnUpdate.disabled = true;
+        btnDelete.disabled = true;
       }
     }
 
@@ -241,7 +266,8 @@
   <label>取引先名</label>
   <input id="torihikisaki_name" type="text" readonly>
 
-  <input id="id" type="hidden">
+  <label>品目ID</label>
+  <input id="id" type="text" readonly>
 
   <label>品目名</label>
   <input id="name" type="text">
