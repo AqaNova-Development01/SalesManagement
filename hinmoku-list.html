@@ -31,10 +31,7 @@
 
       // ★ 絞り込み条件：品目ID + 品目名 のみ
       if (filter) {
-        query = query.or(`
-          id.ilike.%${filter}%,
-          name.ilike.%${filter}%
-        `);
+        query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%`);
       }
 
       let { data, error } = await query;
@@ -120,3 +117,4 @@
 
 </body>
 </html>
+
