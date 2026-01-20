@@ -14,6 +14,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const torihikisaki_id = params.get("torihikisaki_id");
+    const from = params.get("from");   // 呼び出し元画面（uriage, shiire, document など）
 
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
@@ -23,14 +24,17 @@
         .select("*, torihikisaki:torihikisaki_id(name)")
         .order("name");
 
-      // ★ 取引先IDで自動絞り込み（品目画面から来た場合）
+      // ★ 取引先IDで絞り込み（品目画面から来た場合）
       if (torihikisaki_id) {
         query = query.eq("torihikisaki_id", torihikisaki_id);
       }
 
-      // ★ Supabase の or() は JOIN カラムを検索できない
+      // ★ 絞り込み条件：品目ID + 品目名 のみ
       if (filter) {
-        query = query.or(`name.ilike.%${filter}%,unit.ilike.%${filter}%,torihikisaki_id.ilike.%${filter}%`);
+        query = query.or(`
+          id.ilike.%${filter}%,
+          name.ilike.%${filter}%
+        `);
       }
 
       let { data, error } = await query;
@@ -40,16 +44,10 @@
         return;
       }
 
-      // ★ JOIN カラム（取引先名）は JS 側でフィルタ
-      if (filter) {
-        data = data.filter(row =>
-          row.torihikisaki?.name?.includes(filter)
-        );
-      }
-
       let html = `
         <table>
           <tr>
+            <th>品目ID</th>
             <th>品目名</th>
             <th>取引先</th>
             <th>単価</th>
@@ -60,10 +58,11 @@
       data.forEach(row => {
         html += `
           <tr>
+            <td>${row.id}</td>
             <td>${row.name}</td>
             <td>${row.torihikisaki?.name || ""}</td>
             <td>${row.price || ""}</td>
-            <td><button onclick="selectRow('${row.id}')">選択</button></td>
+            <td><button onclick="selectRow('${row.id}', '${row.torihikisaki_id}')">選択</button></td>
           </tr>
         `;
       });
@@ -72,8 +71,28 @@
       document.getElementById("listArea").innerHTML = html;
     }
 
-    window.selectRow = function(id) {
-      window.location.href = "hinmoku.html?id=" + id;
+    // ----------------------------
+    // 行選択 → 呼び出し元に戻る（汎用版）
+    // ----------------------------
+    window.selectRow = function(id, tid) {
+      if (from) {
+        // 例：from=uriage → uriage.html?hinmoku_id=HM0000100001&torihikisaki_id=TK00001
+        window.location.href = `${from}.html?hinmoku_id=${id}&torihikisaki_id=${tid}`;
+      } else {
+        // 品目画面から来た場合
+        window.location.href = "hinmoku.html?id=" + id;
+      }
+    };
+
+    // ----------------------------
+    // 新規作成 → 呼び出し元に応じて遷移
+    // ----------------------------
+    window.goNew = function() {
+      if (from) {
+        window.location.href = `${from}.html`;
+      } else {
+        window.location.href = "hinmoku.html";
+      }
     };
 
     window.loadList = loadList;
@@ -91,13 +110,13 @@
 
   <h2>品目一覧</h2>
 
-  <input id="filter" type="text" placeholder="品目名 / 取引先名 / 取引先ID">
+  <input id="filter" type="text" placeholder="品目ID / 品目名">
   <button onclick="loadList()">検索</button>
 
   <div id="listArea"></div>
 
   <br>
-  <button onclick="location.href='hinmoku.html'">新規作成へ</button>
+  <button onclick="goNew()">新規作成へ</button>
 
 </body>
 </html>
