@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Œ©Ï–¾×ˆê——</title>
+  <title>è¦‹ç©æ˜ç´°ä¸€è¦§</title>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -16,7 +16,7 @@
     const torihikisaki_from_uriage = params.get("torihikisaki_id") || "";
 
     // ----------------------------
-    // æˆøæ–¼ ©“®æ“¾
+    // å–å¼•å…ˆå è‡ªå‹•å–å¾—
     // ----------------------------
     async function loadTorihikisakiName() {
       const id = document.getElementById("torihikisaki_id").value;
@@ -40,7 +40,7 @@
     }
 
     // ----------------------------
-    // ŒŸõˆ—
+    // æ¤œç´¢å‡¦ç†
     // ----------------------------
     async function search() {
       const yymm = document.getElementById("yymm").value.trim();
@@ -48,7 +48,7 @@
       const torihikisaki_name = document.getElementById("torihikisaki_name").value.trim();
       const doc_no = document.getElementById("doc_no").value.trim();
 
-      // document ‚Æ JOIN ‚µ‚ÄæˆøæID‚ğæ“¾
+      // document ã¨ JOIN ã—ã¦å–å¼•å…ˆIDã‚’å–å¾—
       let query = supabase
         .from("document_detail")
         .select(`
@@ -68,26 +68,26 @@
         `)
         .order("document_id", { ascending: false });
 
-      // ”NŒiYYMMj ¨ Œ©Ï”Ô†‚Ìæ“ª6Œ…‚ÉŠÜ‚Ü‚ê‚é
+      // å¹´æœˆï¼ˆYYMMï¼‰ â†’ è¦‹ç©ç•ªå·ã®å…ˆé ­6æ¡ã«å«ã¾ã‚Œã‚‹
       if (yymm) {
         query = query.like("document_id", `%${yymm}%`);
       }
 
-      // ”„ã‰æ–Ê‚©‚çæˆøæID˜AŒg‚ ‚è‚Ìê‡ ¨ æˆøæŒÅ’è
+      // å£²ä¸Šç”»é¢ã‹ã‚‰å–å¼•å…ˆIDé€£æºã‚ã‚Šã®å ´åˆ â†’ å–å¼•å…ˆå›ºå®š
       if (torihikisaki_from_uriage) {
         query = query.eq("document.torihikisaki_id", torihikisaki_from_uriage);
       } else {
-        // æˆøæID‚Åi‚è‚İ
+        // å–å¼•å…ˆIDã§çµã‚Šè¾¼ã¿
         if (torihikisaki_id) {
           query = query.eq("document.torihikisaki_id", torihikisaki_id);
         }
 
-        // æˆøæ–¼‚Åi‚è‚İidocument ‚É torihikisaki_name ‚ğ‚½‚¹‚Ä‚¢‚È‚¢‘O’ñ‚È‚Ì‚ÅA
-        // ‚±‚±‚Å‚Í torihikisaki_name ‚Å‚ÌŒŸõ‚Ís‚í‚¸A«—ˆ JOIN Šg’£‚Ì—]’n‚Æ‚µ‚Äc‚·j
-        // •K—v‚É‚È‚Á‚½‚ç document ‚É torihikisaki_name ‚ğƒRƒs[‚µ‚Ä‚¨‚­‚Ì‚ªˆê”ÔƒVƒ“ƒvƒ‹B
+        // å–å¼•å…ˆåã§çµã‚Šè¾¼ã¿ï¼ˆdocument ã« torihikisaki_name ã‚’æŒãŸã›ã¦ã„ãªã„å‰æãªã®ã§ã€
+        // ã“ã“ã§ã¯ torihikisaki_name ã§ã®æ¤œç´¢ã¯è¡Œã‚ãšã€å°†æ¥ JOIN æ‹¡å¼µã®ä½™åœ°ã¨ã—ã¦æ®‹ã™ï¼‰
+        // å¿…è¦ã«ãªã£ãŸã‚‰ document ã« torihikisaki_name ã‚’ã‚³ãƒ”ãƒ¼ã—ã¦ãŠãã®ãŒä¸€ç•ªã‚·ãƒ³ãƒ—ãƒ«ã€‚
       }
 
-      // Œ©Ï”Ô†‚Åi‚è‚İ
+      // è¦‹ç©ç•ªå·ã§çµã‚Šè¾¼ã¿
       if (doc_no) {
         query = query.like("document_id", `%${doc_no}%`);
       }
@@ -95,7 +95,7 @@
       const { data, error } = await query;
 
       if (error) {
-        alert("ŒŸõƒGƒ‰[: " + error.message);
+        alert("æ¤œç´¢ã‚¨ãƒ©ãƒ¼: " + error.message);
         return;
       }
 
@@ -103,7 +103,7 @@
     }
 
     // ----------------------------
-    // ˆê——•`‰æ
+    // ä¸€è¦§æç”»
     // ----------------------------
     function renderTable(rows) {
       const tbody = document.getElementById("list");
@@ -111,7 +111,7 @@
 
       if (!rows.length) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="7">ŠY“–‚·‚éƒf[ƒ^‚ª‚ ‚è‚Ü‚¹‚ñ</td>`;
+        tr.innerHTML = `<td colspan="7">è©²å½“ã™ã‚‹ãƒ‡ãƒ¼ã‚¿ãŒã‚ã‚Šã¾ã›ã‚“</td>`;
         tbody.appendChild(tr);
         return;
       }
@@ -146,7 +146,7 @@
               '${torihikisaki_id}',
               '${hinmoku_id}'
             )">
-              ”„ã‚ÉƒRƒs[
+              å£²ä¸Šã«ã‚³ãƒ”ãƒ¼
             </button>
           </td>
         `;
@@ -156,14 +156,14 @@
     }
 
     // ----------------------------
-    // URL —pƒGƒXƒP[ƒviƒVƒ“ƒvƒ‹”Åj
+    // URL ç”¨ã‚¨ã‚¹ã‚±ãƒ¼ãƒ—ï¼ˆã‚·ãƒ³ãƒ—ãƒ«ç‰ˆï¼‰
     // ----------------------------
     function escapeForUrl(str) {
       return encodeURIComponent(str ?? "");
     }
 
     // ----------------------------
-    // ”„ã‰æ–Ê‚ÖƒRƒs[
+    // å£²ä¸Šç”»é¢ã¸ã‚³ãƒ”ãƒ¼
     // ----------------------------
     window.copyToUriage = function(doc_id, item, qty, price, torihikisaki_id, hinmoku_id) {
       const url =
@@ -179,10 +179,10 @@
     };
 
     // ----------------------------
-    // ‰Šúˆ—
+    // åˆæœŸå‡¦ç†
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
-      // ”„ã‰æ–Ê‚©‚çæˆøæID‚ª˜AŒg‚³‚ê‚Ä‚¢‚éê‡ ¨ ŒÅ’è
+      // å£²ä¸Šç”»é¢ã‹ã‚‰å–å¼•å…ˆIDãŒé€£æºã•ã‚Œã¦ã„ã‚‹å ´åˆ â†’ å›ºå®š
       if (torihikisaki_from_uriage) {
         const tIdInput = document.getElementById("torihikisaki_id");
         const tNameInput = document.getElementById("torihikisaki_name");
@@ -194,8 +194,8 @@
         tNameInput.readOnly = true;
       }
 
-      // ‰Šú•\¦‚Å©“®ŒŸõ‚µ‚Ä‚à‚æ‚¢‚È‚ç‚±‚±‚Å search() ‚ğŒÄ‚Ô
-      // ¡‰ñ‚Íƒ†[ƒU[‘€ì‚ÅŒŸõ‚·‚é‘O’ñ‚È‚Ì‚ÅŒÄ‚Î‚È‚¢
+      // åˆæœŸè¡¨ç¤ºã§è‡ªå‹•æ¤œç´¢ã—ã¦ã‚‚ã‚ˆã„ãªã‚‰ã“ã“ã§ search() ã‚’å‘¼ã¶
+      // ä»Šå›ã¯ãƒ¦ãƒ¼ã‚¶ãƒ¼æ“ä½œã§æ¤œç´¢ã™ã‚‹å‰æãªã®ã§å‘¼ã°ãªã„
     });
 
     window.search = search;
@@ -214,54 +214,54 @@
 
 <body>
 
-  <h2>Œ©Ï–¾×ˆê——</h2>
+  <h2>è¦‹ç©æ˜ç´°ä¸€è¦§</h2>
 
-  <h3>ŒŸõğŒ</h3>
+  <h3>æ¤œç´¢æ¡ä»¶</h3>
 
   <div>
-    <label>”NŒiYYMMj</label>
-    <input id="yymm" type="text" placeholder="—áF2501">
+    <label>å¹´æœˆï¼ˆYYMMï¼‰</label>
+    <input id="yymm" type="text" placeholder="ä¾‹ï¼š2501">
   </div>
 
   <div>
-    <label>æˆøæID</label>
+    <label>å–å¼•å…ˆID</label>
     <input id="torihikisaki_id" type="text" onblur="loadTorihikisakiName()">
   </div>
 
   <div>
-    <label>æˆøæ–¼</label>
+    <label>å–å¼•å…ˆå</label>
     <input id="torihikisaki_name" type="text" readonly>
   </div>
 
   <div>
-    <label>Œ©Ï”Ô†</label>
+    <label>è¦‹ç©ç•ªå·</label>
     <input id="doc_no" type="text">
   </div>
 
   <div>
-    <button onclick="search()">ŒŸõ</button>
-    <button onclick="location.reload()">ƒNƒŠƒA</button>
+    <button onclick="search()">æ¤œç´¢</button>
+    <button onclick="location.reload()">ã‚¯ãƒªã‚¢</button>
   </div>
 
-  <h3>ˆê——</h3>
+  <h3>ä¸€è¦§</h3>
 
   <table>
     <thead>
       <tr>
-        <th>Œ©Ï”Ô†</th>
-        <th>–¾×ID</th>
-        <th>•i–Ú–¼</th>
-        <th>”—Ê</th>
-        <th>’PˆÊ</th>
-        <th>’P‰¿</th>
-        <th>‹àŠz</th>
-        <th>‘€ì</th>
+        <th>è¦‹ç©ç•ªå·</th>
+        <th>æ˜ç´°ID</th>
+        <th>å“ç›®å</th>
+        <th>æ•°é‡</th>
+        <th>å˜ä½</th>
+        <th>å˜ä¾¡</th>
+        <th>é‡‘é¡</th>
+        <th>æ“ä½œ</th>
       </tr>
     </thead>
     <tbody id="list"></tbody>
   </table>
 
-  <button onclick="history.back()">–ß‚é</button>
+  <button onclick="history.back()">æˆ»ã‚‹</button>
 
 </body>
 </html>
