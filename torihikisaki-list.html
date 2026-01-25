@@ -27,7 +27,7 @@
         .order("kana");
 
       if (filter) {
-        query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%,kana.ilike.%${filter}%,department.ilike.%${filter}%,person.ilike.%${filter}%`);
+        query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%,kana.ilike.%${filter}%,address.ilike.%${filter}%,department.ilike.%${filter}%,person.ilike.%${filter}%`);
       }
 
       let { data, error } = await query;
@@ -40,12 +40,13 @@
       let html = `
         <table>
           <tr>
+            <th>選択</th>
             <th>コード</th>
             <th>会社名</th>
             <th>カナ</th>
+            <th>住所</th>
             <th>部署</th>
             <th>担当者</th>
-            <th>選択</th>
           </tr>
       `;
 
@@ -53,12 +54,13 @@
         const safeId = row.id.replace(/'/g, "\\'");
         html += `
           <tr>
+            <td><button onclick="selectRow('${safeId}')">選択</button></td>
             <td>${row.id}</td>
             <td>${row.name}</td>
             <td>${row.kana || ""}</td>
+            <td>${row.address || ""}</td>
             <td>${row.department || ""}</td>
             <td>${row.person || ""}</td>
-            <td><button onclick="selectRow('${safeId}')">選択</button></td>
           </tr>
         `;
       });
@@ -66,6 +68,13 @@
       html += "</table>";
       document.getElementById("listArea").innerHTML = html;
     }
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      loadList();
+    });
 
     // ----------------------------
     // 行選択 → 呼び出し元に戻る（汎用版）
@@ -118,8 +127,9 @@
   <br>
   <button onclick="goNew()">新規作成へ</button>
 
+  <button onclick="location.href='index.html'">メニューへ</button>
+
 </body>
 </html>
-
 
 

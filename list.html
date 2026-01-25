@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>売上／仕入 一覧</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const kubun = params.get("kubun"); // UR or KI
+
+    // ----------------------------
+    // 取引先ドロップダウン
+    // ----------------------------
+    async function loadTorihikisakiSelect() {
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("id, name")
+        .order("id");
+
+      const sel = document.getElementById("filter_torihikisaki");
+      sel.innerHTML = "";
+
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "（全て）";
+      sel.appendChild(blank);
+
+      data.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = `${t.id}：${t.name}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    // ----------------------------
+    // 年月ドロップダウン
+    // ----------------------------
+    function loadYearMonthSelect() {
+      const sel = document.getElementById("filter_ym");
+      sel.innerHTML = "";
+
+      const now = new Date();
+      const currentYM = now.toISOString().slice(0, 7);
+
+      for (let i = 0; i < 24; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const ym = d.toISOString().slice(0, 7);
+
+        const opt = document.createElement("option");
+        opt.value = ym;
+        opt.textContent = ym;
+        sel.appendChild(opt);
+      }
+
+      sel.value = currentYM;
+    }
+
+    // ----------------------------
+    // 一覧読み込み
+    // ----------------------------
+    async function loadList() {
+      let table = (kubun === "UR") ? "uriage" : "shiire";
+
+      let query = supabase
+        .from(table)
+        .select("*, torihikisaki:torihikisaki_id(name)")
+        .order("id");
+
+      // 取引先絞り込み
+      const tid = document.getElementById("filter_torihikisaki").value;
+      if (tid) query = query.eq("torihikisaki_id", tid);
+
+      // 年月絞り込み（計上日）
+      const ym = document.getElementById("filter_ym").value;
+      if (ym) {
+        const start = ym + "-01";
+        const end = ym + "-31";
+        query = query.gte("keijo_date", start).lte("keijo_date", end);
+      }
+
+      // キーワード検索
+      const keyword = document.getElementById("filter_keyword").value.trim();
+      if (keyword) {
+        query = query.or(`item.ilike.%${keyword}%,memo.ilike.%${keyword}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        alert("一覧取得エラー: " + error.message);
+        return;
+      }
+
+      // タイトル切り替え
+      document.getElementById("title_kubun").innerText =
+        (kubun === "UR") ? "売上一覧" : "仕入一覧";
+
+      let html = `
+        <button onclick="goNew()">新規作成</button>
+
+        <h3>絞り込み</h3>
+
+        <label>取引先</label>
+        <select id="filter_torihikisaki" onchange="loadList()"></select>
+
+        <label>年月（計上日）</label>
+        <select id="filter_ym" onchange="loadList()"></select>
+
+        <label>キーワード</label>
+        <input id="filter_keyword" type="text" oninput="loadList()" placeholder="品目名 / 備考">
+
+        <table>
+          <tr>
+            <th>ID</th>
+            <th>取引先</th>
+            <th>品目</th>
+            <th>数量</th>
+            <th>金額</th>
+            <th>計上日</th>
+            <th>操作</th>
+          </tr>
+      `;
+
+      data.forEach(row => {
+        html += `
+          <tr>
+            <td>${row.id}</td>
+            <td>${row.torihikisaki?.name || ""}</td>
+            <td>${row.item}</td>
+            <td>${row.quantity}</td>
+            <td>${row.amount}</td>
+            <td>${row.keijo_date || ""}</td>
+            <td><button onclick="editRow('${row.id}')">編集</button></td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+      document.getElementById("listArea").innerHTML = html;
+
+      // 初期ロード時のみ
+      await loadTorihikisakiSelect();
+      loadYearMonthSelect();
+    }
+
+    // ----------------------------
+    // 新規作成
+    // ----------------------------
+    window.goNew = function() {
+      location.href = `uriage.html?kubun=${kubun}`;
+    };
+
+    // ----------------------------
+    // 編集
+    // ----------------------------
+    window.editRow = function(id) {
+      location.href = `uriage.html?kubun=${kubun}&id=${id}`;
+    };
+
+    window.addEventListener("DOMContentLoaded", loadList);
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    select, input { width: 300px; padding: 6px; margin: 6px 0; }
+  </style>
+</head>
+
+<body>
+  <h2 id="title_kubun">売上／仕入 一覧</h2>
+
+  <div id="listArea"></div>
+
+  <button onclick="location.href='index.html'">メニューへ</button>
+</body>
+</html>

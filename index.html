@@ -11,7 +11,9 @@
     const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // ----------------------------
     // ログイン済みチェック
+    // ----------------------------
     async function checkLogin() {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
@@ -19,7 +21,9 @@
       }
     }
 
+    // ----------------------------
     // ログアウト
+    // ----------------------------
     async function logout() {
       await supabase.auth.signOut();
       window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
@@ -30,8 +34,20 @@
   </script>
 
   <style>
-    body { font-family: sans-serif; padding: 40px; max-width: 500px; margin: auto; }
-    h2 { margin-bottom: 30px; }
+    body {
+      font-family: sans-serif;
+      padding: 40px;
+      max-width: 500px;
+      margin: auto;
+    }
+    h2 {
+      margin-bottom: 30px;
+    }
+    h3 {
+      margin-top: 30px;
+      border-bottom: 2px solid #ccc;
+      padding-bottom: 5px;
+    }
     button {
       width: 100%;
       padding: 15px;
@@ -45,34 +61,48 @@
 
   <h2>アクア・ノヴァ 販売管理システム｜メニュー</h2>
 
-  <!-- 各画面への遷移（絶対パス） -->
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/torihikisaki.html'">
-    取引先マスター
-  </button>
+  <!-- 売上・仕入 -->
+  <h3>売上・仕入</h3>
+  <button onclick="location.href='list.html?kubun=UR'">売上一覧</button>
+  <button onclick="location.href='uriage.html?kubun=UR'">売上入力</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/hinmoku.html'">
-    品目マスター
-  </button>
+  <button onclick="location.href='list.html?kubun=KI'">仕入一覧</button>
+  <button onclick="location.href='uriage.html?kubun=KI'">仕入入力</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/uriage.html'">
-    売上入力
-  </button>
+  <!-- 入出金 -->
+  <h3>入出金</h3>
+  <button onclick="location.href='payment-entry.html'">入金入力</button>
+  <button onclick="location.href='receipt-entry.html'">出金入力</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/shiire.html'">
-    仕入入力
-  </button>
+  <!-- 見積・発注 -->
+  <h3>見積・発注</h3>
+  <button onclick="location.href='document.html'">見積書作成</button>
+  <button onclick="location.href='order.html'">発注書作成</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/payment-entry.html'">
-    入金入力
-  </button>
+  <!-- 帳票出力 -->
+  <h3>帳票出力</h3>
+  <button onclick="location.href='report_urikake.html'">売掛集計</button>
+  <button onclick="location.href='report_kaikake.html'">買掛集計</button>
+  <button onclick="location.href='report_seikyu.html'">請求書</button>
+  <button onclick="location.href='report_mitumori.html'">見積書（PDF）</button>
+  <button onclick="location.href='report_order.html'">発注書（PDF）</button>
+  <button onclick="location.href='report_receipt.html'">領収書</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/receipt-entry.html'">
-    出金入力
-  </button>
+  <!-- データ出力（CSV） -->
+  <h3>データ出力（CSV）</h3>
+  <button onclick="location.href='csv_urikake_monthly.html'">取引先別月次売上 CSV</button>
+  <button onclick="location.href='csv_kaikake_monthly.html'">取引先別月次買掛 CSV</button>
+  <button onclick="location.href='csv_seikyu.html'">請求 CSV</button>
+  <button onclick="location.href='csv_mitumori.html'">見積 CSV</button>
 
-  <button onclick="location.href='https://aqanova-development01.github.io/SalesManagement/user-settings.html'">
-    ユーザー設定
-  </button>
+  <!-- マスタ管理 -->
+  <h3>マスタ管理</h3>
+  <button onclick="location.href='torihikisaki-list.html'">取引先マスター</button>
+  <button onclick="location.href='hinmoku-list.html'">品目マスター</button>
+
+  <!-- ユーザー設定 -->
+  <h3>ユーザー</h3>
+  <button onclick="location.href='user-settings.html'">ユーザー設定</button>
 
   <button onclick="logout()">ログアウト</button>
 

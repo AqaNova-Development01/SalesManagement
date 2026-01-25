@@ -20,30 +20,33 @@
     }
 
     const params = new URLSearchParams(window.location.search);
-    const selectedId = params.get("id");
-    const torihikisaki_id_from_prev = params.get("torihikisaki_id");
+    const selectedId = params.get("id");                     // 品目ID（編集時）
+    const torihikisaki_id_from_prev = params.get("torihikisaki_id"); // 一覧から渡された取引先ID
 
     // ----------------------------
-    // 品目コード採番（RPC）
+    // 取引先一覧をドロップダウンにセット
     // ----------------------------
-    async function generateHinmokuCode(tid) {
-      const { data, error } = await supabase.rpc("get_next_hinmoku_code", {
-        tid: tid
+    async function loadTorihikisakiSelect() {
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("id, name")
+        .order("id");
+
+      const sel = document.getElementById("torihikisaki_select");
+      sel.innerHTML = "";
+
+      data.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = `${t.id}：${t.name}`;
+        sel.appendChild(opt);
       });
-
-      if (error) {
-        alert("採番エラー: " + error.message);
-        return null;
-      }
-
-      return data; // HM0000100001 など
     }
 
     // ----------------------------
     // 取引先名 自動取得
     // ----------------------------
-    async function loadTorihikisakiName() {
-      const id = document.getElementById("torihikisaki_id").value;
+    async function loadTorihikisakiName(id) {
       if (!id) return;
 
       const { data } = await supabase
@@ -56,7 +59,7 @@
     }
 
     // ----------------------------
-    // データ読込（更新時）
+    // データ読込（編集時）
     // ----------------------------
     async function loadData(id) {
       const { data } = await supabase
@@ -71,15 +74,32 @@
       document.getElementById("price").value = data.price || "";
       document.getElementById("tax_rate").value = data.tax_rate || "";
       document.getElementById("memo").value = data.memo || "";
-      document.getElementById("torihikisaki_id").value = data.torihikisaki_id || "";
+      document.getElementById("torihikisaki_id").value = data.torihikisaki_id;
 
-      loadTorihikisakiName();
+      // ドロップダウン反映
+      document.getElementById("torihikisaki_select").value = data.torihikisaki_id;
+      document.getElementById("torihikisaki_select").disabled = true;
+
+      loadTorihikisakiName(data.torihikisaki_id);
       updateButtonState();
     }
 
     // ----------------------------
     // 登録（採番対応）
     // ----------------------------
+    async function generateHinmokuCode(tid) {
+      const { data, error } = await supabase.rpc("get_next_hinmoku_code", {
+        tid: tid
+      });
+
+      if (error) {
+        alert("採番エラー: " + error.message);
+        return null;
+      }
+
+      return data;
+    }
+
     async function registerData() {
       const tid = document.getElementById("torihikisaki_id").value;
       const name = document.getElementById("name").value.trim();
@@ -130,26 +150,6 @@
     }
 
     // ----------------------------
-    // 削除
-    // ----------------------------
-    async function deleteData() {
-      const id = document.getElementById("id").value;
-
-      if (!confirm("本当に削除しますか？")) return;
-
-      const { error } = await supabase
-        .from("hinmoku")
-        .delete()
-        .eq("id", id);
-
-      if (error) alert("削除エラー: " + error.message);
-      else {
-        alert("削除しました");
-        clearForm();
-      }
-    }
-
-    // ----------------------------
     // フォーム収集
     // ----------------------------
     function collectForm() {
@@ -175,7 +175,6 @@
       document.getElementById("memo").value = "";
       document.getElementById("torihikisaki_id").value = "";
       document.getElementById("torihikisaki_name").value = "";
-
       updateButtonState();
     }
 
@@ -188,21 +187,18 @@
 
       const btnRegister = document.getElementById("btnRegister");
       const btnUpdate = document.getElementById("btnUpdate");
-      const btnDelete = document.getElementById("btnDelete");
 
       if (id) {
         btnRegister.disabled = true;
         btnUpdate.disabled = false;
-        btnDelete.disabled = false;
       } else {
         btnRegister.disabled = name.trim() === "";
         btnUpdate.disabled = true;
-        btnDelete.disabled = true;
       }
     }
 
     // ----------------------------
-    // 品目一覧へ（取引先ID付き）
+    // 一覧へ戻る
     // ----------------------------
     window.goList = function() {
       const tid = document.getElementById("torihikisaki_id").value;
@@ -215,39 +211,47 @@
     };
 
     // ----------------------------
-    // 取引先一覧を開く
-    // ----------------------------
-    window.openTorihikisakiList = function() {
-      window.location.href = "torihikisaki-list.html?from=hinmoku";
-    };
-
-    // ----------------------------
     // 初期処理
     // ----------------------------
-    loadUser();
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadUser();
+      await loadTorihikisakiSelect();
 
-    if (torihikisaki_id_from_prev) {
-      document.getElementById("torihikisaki_id").value = torihikisaki_id_from_prev;
-      loadTorihikisakiName();
-    }
+      // 編集モード
+      if (selectedId) {
+        await loadData(selectedId);
+        return;
+      }
 
-    if (selectedId) {
-      loadData(selectedId);
-    } else {
+      // 新規モード（一覧から取引先IDが渡された場合）
+      if (torihikisaki_id_from_prev) {
+        document.getElementById("torihikisaki_select").value = torihikisaki_id_from_prev;
+        document.getElementById("torihikisaki_select").disabled = true;
+
+        document.getElementById("torihikisaki_id").value = torihikisaki_id_from_prev;
+        loadTorihikisakiName(torihikisaki_id_from_prev);
+      }
+
       updateButtonState();
-    }
+    });
 
-    document.addEventListener("input", updateButtonState);
+    // ----------------------------
+    // ドロップダウン変更時
+    // ----------------------------
+    document.getElementById("torihikisaki_select").addEventListener("change", () => {
+      const tid = document.getElementById("torihikisaki_select").value;
+      document.getElementById("torihikisaki_id").value = tid;
+      loadTorihikisakiName(tid);
+    });
 
     window.registerData = registerData;
     window.updateData = updateData;
-    window.deleteData = deleteData;
-    window.loadTorihikisakiName = loadTorihikisakiName;
+
   </script>
 
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-    input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
+    input, textarea, select { width: 100%; padding: 8px; margin: 8px 0; }
     button { width: 100%; padding: 12px; margin: 10px 0; }
     #id, #torihikisaki_id, #torihikisaki_name { background: #eee; }
   </style>
@@ -257,14 +261,10 @@
 
   <h2>品目マスタ</h2>
 
-  <h3>取引先（仕入先）</h3>
+  <label>取引先</label>
+  <select id="torihikisaki_select"></select>
 
-  <button type="button" onclick="openTorihikisakiList()">取引先を選択</button>
-
-  <label>取引先ID</label>
   <input id="torihikisaki_id" type="text" readonly>
-
-  <label>取引先名</label>
   <input id="torihikisaki_name" type="text" readonly>
 
   <label>品目ID</label>
@@ -287,7 +287,6 @@
 
   <button id="btnRegister" onclick="registerData()">登録</button>
   <button id="btnUpdate" onclick="updateData()">更新</button>
-  <button id="btnDelete" onclick="deleteData()">削除</button>
 
   <button onclick="goList()">一覧へ</button>
   <button onclick="location.href='index.html'">メニューへ</button>
