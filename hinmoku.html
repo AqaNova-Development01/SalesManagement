@@ -35,6 +35,11 @@
       const sel = document.getElementById("torihikisaki_select");
       sel.innerHTML = "";
 
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "（選択してください）";
+      sel.appendChild(blank);
+
       data.forEach(t => {
         const opt = document.createElement("option");
         opt.value = t.id;
