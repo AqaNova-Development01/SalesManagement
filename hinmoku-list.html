@@ -14,17 +14,25 @@
 
     const params = new URLSearchParams(window.location.search);
     const torihikisaki_id = params.get("torihikisaki_id");
-    const from = params.get("from");   // 呼び出し元画面（uriage, shiire, document など）
+    const from = params.get("from");   // 呼び出し元画面（uriage, shiire, document, hinmoku）
+    const kubun = params.get("kubun"); // ★ UR or KI（売上/仕入区分）
     let selected_torihikisaki_id = params.get("torihikisaki_id") || null;
 
     // ----------------------------
     // 取引先一覧をドロップダウンにセット
     // ----------------------------
     async function loadTorihikisakiList() {
-      const { data } = await supabase
+
+      //const { data } = await supabase
+      let query = supabase
         .from("torihikisaki")
         .select("id, name")
         .order("id");
+
+      if (kubun === "KI") {
+        query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
+      }
+      const { data } = await query;
 
       const list = document.getElementById("torihikisaki_list");
 
@@ -40,25 +48,18 @@
     // 取引先名 自動取得
     // ----------------------------
     async function loadTorihikisakiName() {
-      // const id = document.getElementById("torihikisaki_id").value;
       if (!torihikisaki_id) {
         document.getElementById("torihikisaki_name").value = "";
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("torihikisaki")
         .select("name")
         .eq("id", torihikisaki_id)
         .single();
 
-      if (error) {
-        document.getElementById("torihikisaki_name").value = "";
-        return;
-      }
-
       document.getElementById("torihikisaki_name").value = data?.name || "";
-      //await loadList()
     }
 
     // ----------------------------
@@ -67,39 +68,40 @@
     function onTorihikisakiNameInput() {
       const name = document.getElementById("torihikisaki_name").value;
 
-  document.getElementById("debugArea").innerText =
-    "onTorihikisakiNameInput 発火, 入力値=" + name;
+      if (!name) {
+        selected_torihikisaki_id = null;
+      }
 
       const list = document.getElementById("torihikisaki_list").options;
 
       for (let opt of list) {
         if (opt.value === name) {
-          // document.getElementById("torihikisaki_id").value = opt.dataset.id;
           selected_torihikisaki_id = opt.dataset.id;
-document.getElementById("debugArea").innerText =
-  "on selected_torihikisaki_id = " + selected_torihikisaki_id;
-
-          loadList();
           return;
         }
       }
     }
 
+    // ----------------------------
+    // 一覧読み込み
+    // ----------------------------
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
+
+      onTorihikisakiNameInput();
 
       let query = supabase
         .from("hinmoku")
         .select("*, torihikisaki:torihikisaki_id(name)")
         .order("name");
 
-      // ★ 取引先IDで絞り込み（品目画面から来た場合）
       if (selected_torihikisaki_id) {
         query = query.eq("torihikisaki_id", selected_torihikisaki_id);
       }
+      if (kubun === "KI") {
+        query = query.not("torihikisaki_id", "eq", "TK00000");  // ★ 自社を除外
+      }
 
-
-      // ★ 絞り込み条件：品目ID + 品目名 のみ
       if (filter) {
         query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%`);
       }
@@ -136,51 +138,63 @@ document.getElementById("debugArea").innerText =
 
       html += "</table>";
       document.getElementById("listArea").innerHTML = html;
-
     }
 
     // ----------------------------
-    // 初期処理
-    // ----------------------------
-    window.addEventListener("DOMContentLoaded", async () => {
-      await loadTorihikisakiList();
-      //  alert("取引先番号：" + torihikisaki_id + "");
-
-      if (torihikisaki_id) {
-        //document.getElementById("torihikisaki_id").value = torihikisaki_id;
-        //document.getElementById("torihikisaki_id").readOnly = true;
-        selected_torihikisaki_id = torihikisaki_id
-	await loadTorihikisakiName();
-        //document.getElementById("torihikisaki_name").value = torihikisaki_id;
-        document.getElementById("torihikisaki_name").readOnly = true;
-      }
-
-      loadList();
-    });
-
-    // ----------------------------
-    // 行選択 → 呼び出し元に戻る（汎用版）
+    // 行選択 → 呼び出し元に戻る（完全版）
     // ----------------------------
     window.selectRow = function(id, tid) {
-      if (from) {
-        // 例：from=uriage → uriage.html?hinmoku_id=HM0000100001&torihikisaki_id=TK00001
-        window.location.href = `${from}.html?hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
-      } else {
-        // 品目画面から来た場合
-        window.location.href = "hinmoku.html?id=" + id;
+
+      // ★ 売上 or 仕入から来た場合（kubun が必要）
+      if (from === "uriage" || from === "shiire") {
+        window.location.href =
+          `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
+        return;
       }
+
+      // ★ 見積画面から来た場合（kubun 不要）
+      if (from === "document") {
+        window.location.href =
+          `document.html?hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
+        return;
+      }
+
+      // ★ 品目画面から来た場合（従来通り）
+      window.location.href = "hinmoku.html?id=" + id;
     };
 
     // ----------------------------
     // 新規作成 → 呼び出し元に応じて遷移
     // ----------------------------
     window.goNew = function() {
-      if (from) {
-        window.location.href = `${from}.html`;
-      } else {
-        window.location.href = "hinmoku.html";
+
+      if (from === "uriage" || from === "shiire") {
+        window.location.href = `${from}.html?kubun=${kubun}`;
+        return;
       }
+
+      if (from === "document") {
+        window.location.href = "document.html";
+        return;
+      }
+
+      window.location.href = "hinmoku.html";
     };
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadTorihikisakiList();
+
+      if (torihikisaki_id) {
+        selected_torihikisaki_id = torihikisaki_id;
+        await loadTorihikisakiName();
+        document.getElementById("torihikisaki_name").readOnly = true;
+      }
+
+      loadList();
+    });
 
     window.loadList = loadList;
   </script>
@@ -197,13 +211,12 @@ document.getElementById("debugArea").innerText =
 
   <h2>品目一覧</h2>
 
-  <input id="torihikisaki_name" placeholder="取引先名" list="torihikisaki_list" oninput="onTorihikisakiNameInput()" onchange="onTorihikisakiNameInput()">
+  <input id="torihikisaki_name" placeholder="取引先名" list="torihikisaki_list"
+         oninput="onTorihikisakiNameInput()" onchange="onTorihikisakiNameInput()">
   <datalist id="torihikisaki_list"></datalist>
 
   <input id="filter" type="text" placeholder="品目ID / 品目名">
   <button onclick="loadList()">検索</button>
-
-<div id="debugArea" style="margin-top:10px; color:blue; font-size:14px;"></div>
 
   <div id="listArea"></div>
 
