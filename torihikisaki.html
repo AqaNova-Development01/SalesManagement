@@ -5,29 +5,21 @@
   <title>取引先マスタ</title>
 
   <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-    const supabase = createClient(
-      "https://omzcbfjtwyygvvgxsiov.supabase.co",
-      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
-    );
-
-    let currentUser = null;
+    import { supabase, requireLogin, loadUser } from "./check-login.js";
 
     // ----------------------------
-    // ログインユーザー取得
+    // ログインチェック & ユーザー取得
     // ----------------------------
-    async function loadUser() {
-      const { data } = await supabase.auth.getUser();
-      currentUser = data.user;
-    }
+    await requireLogin();
+    const currentUser = await loadUser();
 
+    // URL パラメータ
     const params = new URLSearchParams(window.location.search);
     const selectedId = params.get("id");
-    const from = params.get("from");   // ★ 呼び出し元画面
+    const from = params.get("from");
 
     // ----------------------------
-    // 取引先コード採番（TK + 5桁連番）
+    // 取引先コード採番（TK + 5桁）
     // ----------------------------
     async function generateTKCode() {
       const prefix = "TK";
@@ -53,8 +45,7 @@
         })
         .eq("code", prefix);
 
-      const num = String(nextNo).padStart(5, "0");
-      return `${prefix}${num}`;
+      return prefix + String(nextNo).padStart(5, "0");
     }
 
     // ----------------------------
@@ -72,27 +63,17 @@
         return;
       }
 
-      document.getElementById("id").value = data.id;
-      document.getElementById("kana").value = data.kana || "";
-      document.getElementById("name").value = data.name;
-      document.getElementById("department").value = data.department || "";
-      document.getElementById("person").value = data.person || "";
-      document.getElementById("postal_code").value = data.postal_code || "";
-      document.getElementById("address").value = data.address || "";
-      document.getElementById("tel").value = data.tel || "";
-      document.getElementById("fax").value = data.fax || "";
-      document.getElementById("invoice_number").value = data.invoice_number || "";
-      document.getElementById("billing_email_or_url").value = data.billing_email_or_url || "";
-      document.getElementById("bank_name").value = data.bank_name || "";
-      document.getElementById("bank_branch").value = data.bank_branch || "";
-      document.getElementById("bank_account").value = data.bank_account || "";
-      document.getElementById("account_holder").value = data.account_holder || "";
+      for (const key in data) {
+        if (document.getElementById(key)) {
+          document.getElementById(key).value = data[key] ?? "";
+        }
+      }
 
       updateButtonState();
     }
 
     // ----------------------------
-    // 登録（入力チェック追加）
+    // 登録
     // ----------------------------
     async function registerData() {
       const name = document.getElementById("name").value.trim();
@@ -118,7 +99,7 @@
     }
 
     // ----------------------------
-    // 更新（入力チェック追加）
+    // 更新
     // ----------------------------
     async function updateData() {
       const name = document.getElementById("name").value.trim();
@@ -189,31 +170,16 @@
     // フォームクリア
     // ----------------------------
     function clearForm() {
-      document.getElementById("id").value = "";
-      document.getElementById("kana").value = "";
-      document.getElementById("name").value = "";
-      document.getElementById("department").value = "";
-      document.getElementById("person").value = "";
-      document.getElementById("postal_code").value = "";
-      document.getElementById("address").value = "";
-      document.getElementById("tel").value = "";
-      document.getElementById("fax").value = "";
-      document.getElementById("invoice_number").value = "";
-      document.getElementById("billing_email_or_url").value = "";
-      document.getElementById("bank_name").value = "";
-      document.getElementById("bank_branch").value = "";
-      document.getElementById("bank_account").value = "";
-      document.getElementById("account_holder").value = "";
-
+      document.querySelectorAll("input, textarea").forEach(el => el.value = "");
       updateButtonState();
     }
 
     // ----------------------------
-    // ボタン活性/非活性制御
+    // ボタン活性制御
     // ----------------------------
     function updateButtonState() {
       const id = document.getElementById("id").value;
-      const name = document.getElementById("name").value;
+      const name = document.getElementById("name").value.trim();
 
       const btnRegister = document.getElementById("btnRegister");
       const btnUpdate = document.getElementById("btnUpdate");
@@ -225,30 +191,21 @@
         btnDelete.disabled = false;
       } else {
         btnRegister.disabled = false;
-
-        if (name.trim() === "") {
-          btnUpdate.disabled = true;
-          btnDelete.disabled = true;
-        } else {
-          btnUpdate.disabled = false;
-          btnDelete.disabled = true;
-        }
+        btnUpdate.disabled = name === "";
+        btnDelete.disabled = true;
       }
     }
 
     // ----------------------------
-    // 一覧へ戻る（呼び出し元対応）
+    // 一覧へ戻る
     // ----------------------------
     function goList() {
       window.location.href = "torihikisaki-list.html";
     }
 
-
     // ----------------------------
     // 初期処理
     // ----------------------------
-    loadUser();
-
     if (selectedId) {
       loadData(selectedId);
     } else {
