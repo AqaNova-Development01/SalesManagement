@@ -141,7 +141,7 @@
           keijo_date,
           torihikisaki(name)
         `)
-        .like("id", `%{kubun}${yymm}%`)
+        .like("id", `%${kubun}${yymm}%`)
         .eq("kake_kbn", kubun)   // ★ UR or KI を必ず絞る
         .order("id", { ascending: false });
 
