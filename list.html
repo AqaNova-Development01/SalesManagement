@@ -145,7 +145,6 @@
 
         tr.innerHTML = `
           <button onclick="editUriage('${r.id}')">編集</button>
-          <td>
           <td>${r.id}</td>
           <td>${r.torihikisaki?.name || ""}</td>
           <td>${r.item}</td>
@@ -210,9 +209,6 @@
   <input id="month"></select>
 
   <br>
-
-//  <label>取引先ID</label>
-//  <input id="torihikisaki_id" type="text">
 
   <label>取引先名</label>
   <input id="torihikisaki_name" placeholder="取引先名"  list="torihikisaki_list" oninput="onTorihikisakiNameInput()">
