@@ -5,33 +5,32 @@
   <title>品目一覧</title>
 
   <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    import { supabase, requireLogin } from "./check-login.js";
 
-    const supabase = createClient(
-      "https://omzcbfjtwyygvvgxsiov.supabase.co",
-      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
-    );
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    await requireLogin();
 
     const params = new URLSearchParams(window.location.search);
     const torihikisaki_id = params.get("torihikisaki_id");
-    const from = params.get("from");   // 呼び出し元画面（uriage, shiire, document, hinmoku）
-    const kubun = params.get("kubun"); // ★ UR or KI（売上/仕入区分）
-    let selected_torihikisaki_id = params.get("torihikisaki_id") || null;
+    const from = params.get("from");
+    const kubun = params.get("kubun");
+    let selected_torihikisaki_id = torihikisaki_id || null;
 
     // ----------------------------
     // 取引先一覧をドロップダウンにセット
     // ----------------------------
     async function loadTorihikisakiList() {
-
-      //const { data } = await supabase
       let query = supabase
         .from("torihikisaki")
         .select("id, name")
         .order("id");
 
       if (kubun === "KI") {
-        query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
+        query = query.not("id", "eq", "TK00000");
       }
+
       const { data } = await query;
 
       const list = document.getElementById("torihikisaki_list");
@@ -99,14 +98,14 @@
         query = query.eq("torihikisaki_id", selected_torihikisaki_id);
       }
       if (kubun === "KI") {
-        query = query.not("torihikisaki_id", "eq", "TK00000");  // ★ 自社を除外
+        query = query.not("torihikisaki_id", "eq", "TK00000");
       }
 
       if (filter) {
         query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%`);
       }
 
-      let { data, error } = await query;
+      const { data, error } = await query;
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
@@ -141,33 +140,28 @@
     }
 
     // ----------------------------
-    // 行選択 → 呼び出し元に戻る（完全版）
+    // 行選択
     // ----------------------------
     window.selectRow = function(id, tid) {
-
-      // ★ 売上 or 仕入から来た場合（kubun が必要）
       if (from === "uriage" || from === "shiire") {
         window.location.href =
           `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
         return;
       }
 
-      // ★ 見積画面から来た場合（kubun 不要）
       if (from === "document") {
         window.location.href =
           `document.html?hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
         return;
       }
 
-      // ★ 品目画面から来た場合（従来通り）
       window.location.href = "hinmoku.html?id=" + id;
     };
 
     // ----------------------------
-    // 新規作成 → 呼び出し元に応じて遷移
+    // 新規作成
     // ----------------------------
     window.goNew = function() {
-
       if (from === "uriage" || from === "shiire") {
         window.location.href = `${from}.html?kubun=${kubun}`;
         return;
@@ -182,19 +176,17 @@
     };
 
     // ----------------------------
-    // 初期処理
+    // 初期処理（DOMContentLoaded は使わない）
     // ----------------------------
-    window.addEventListener("DOMContentLoaded", async () => {
-      await loadTorihikisakiList();
+    await loadTorihikisakiList();
 
-      if (torihikisaki_id) {
-        selected_torihikisaki_id = torihikisaki_id;
-        await loadTorihikisakiName();
-        document.getElementById("torihikisaki_name").readOnly = true;
-      }
+    if (torihikisaki_id) {
+      selected_torihikisaki_id = torihikisaki_id;
+      await loadTorihikisakiName();
+      document.getElementById("torihikisaki_name").readOnly = true;
+    }
 
-      loadList();
-    });
+    loadList();
 
     window.loadList = loadList;
   </script>
