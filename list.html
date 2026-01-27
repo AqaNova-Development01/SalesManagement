@@ -13,7 +13,9 @@
     );
 
     const params = new URLSearchParams(window.location.search);
-    const torihikisaki_from_uriage = params.get("torihikisaki_id") || "";
+    const kubun = params.get("kubun"); // UR or KI
+    const torihikisaki_id = params.get("torihikisaki_id") || "";
+    let selected_torihikisaki_id = torihikisaki_id || null;
 
     // ----------------------------
     // 年月ドロップダウン初期化
@@ -26,7 +28,7 @@
       const yearSel = document.getElementById("year");
       const monthSel = document.getElementById("month");
 
-      for (let y = year - 5; y <= year + 1; y++) {
+      for (let y = year - 3; y <= year + 1; y++) {
         const opt = document.createElement("option");
         opt.value = y;
         opt.textContent = y;
@@ -71,7 +73,7 @@
 
       for (let opt of list) {
         if (opt.value === name) {
-          document.getElementById("torihikisaki_id").value = opt.dataset.id;
+          selected_torihikisaki_id = opt.dataset.id;
           return;
         }
       }
@@ -106,8 +108,8 @@
         .order("id", { ascending: false });
 
       // 売上画面から取引先ID連携あり → 固定
-      if (torihikisaki_from_uriage) {
-        query = query.eq("torihikisaki_id", torihikisaki_from_uriage);
+      if (selected_torihikisaki_id) {
+        query = query.eq("torihikisaki_id", selected_torihikisaki_id);
       } else {
         if (torihikisaki_id) {
           query = query.eq("torihikisaki_id", torihikisaki_id);
@@ -142,6 +144,8 @@
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
+          <button onclick="editUriage('${r.id}')">編集</button>
+          <td>
           <td>${r.id}</td>
           <td>${r.torihikisaki?.name || ""}</td>
           <td>${r.item}</td>
@@ -150,8 +154,6 @@
           <td>${r.amount}</td>
           <td>${r.delivery_date || ""}</td>
           <td>${r.keijo_date || ""}</td>
-          <td>
-            <button onclick="editUriage('${r.id}')">編集</button>
           </td>
         `;
 
@@ -173,8 +175,8 @@
       initYearMonth();
       await loadTorihikisakiList();
 
-      if (torihikisaki_from_uriage) {
-        document.getElementById("torihikisaki_id").value = torihikisaki_from_uriage;
+      if (selected_torihikisaki_id) {
+        document.getElementById("torihikisaki_id").value = selected_torihikisaki_id;
         document.getElementById("torihikisaki_id").readOnly = true;
         document.getElementById("torihikisaki_name").readOnly = true;
       }
@@ -202,18 +204,18 @@
   <h3>検索条件</h3>
 
   <label>年</label>
-  <select id="year"></select>
+  <input id="year"></select>
 
   <label>月</label>
-  <select id="month"></select>
+  <input id="month"></select>
 
   <br>
 
-  <label>取引先ID</label>
-  <input id="torihikisaki_id" type="text">
+//  <label>取引先ID</label>
+//  <input id="torihikisaki_id" type="text">
 
   <label>取引先名</label>
-  <input id="torihikisaki_name" list="torihikisaki_list" oninput="onTorihikisakiNameInput()">
+  <input id="torihikisaki_name" placeholder="取引先名"  list="torihikisaki_list" oninput="onTorihikisakiNameInput()">
   <datalist id="torihikisaki_list"></datalist>
 
   <br>
@@ -226,6 +228,7 @@
   <table>
     <thead>
       <tr>
+        <th>操作</th>
         <th>売上ID</th>
         <th>取引先名</th>
         <th>品目名</th>
@@ -234,7 +237,6 @@
         <th>金額</th>
         <th>納品日</th>
         <th>計上日</th>
-        <th>操作</th>
       </tr>
     </thead>
     <tbody id="list"></tbody>
