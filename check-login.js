@@ -12,3 +12,8 @@ export async function requireLogin() {
     window.location.href = "login.html";
   }
 }
+
+export async function loadUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+}
