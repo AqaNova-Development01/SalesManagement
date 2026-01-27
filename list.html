@@ -68,6 +68,32 @@
       });
     }
 
+
+    // ----------------------------
+    // 取引先名 自動取得
+    // ----------------------------
+    async function loadTorihikisakiName() {
+      // const id = document.getElementById("torihikisaki_id").value;
+      if (!torihikisaki_id) {
+        document.getElementById("torihikisaki_name").value = "";
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("torihikisaki")
+        .select("name")
+        .eq("id", torihikisaki_id)
+        .single();
+
+      if (error) {
+        document.getElementById("torihikisaki_name").value = "";
+        return;
+      }
+
+      document.getElementById("torihikisaki_name").value = data?.name || "";
+      //await loadList()
+    }
+
     // ----------------------------
     // 取引先名 → ID 自動セット
     // ----------------------------
@@ -173,7 +199,7 @@
     // 編集画面へ
     // ----------------------------
     window.editUriage = function(id) {
-      location.href = `uriage.html?id=${id}`;
+      location.href = `uriage.html?kubun=${kubun}&id=${id}`;
     };
 
     // ----------------------------
@@ -183,9 +209,11 @@
       initYearMonth();
       await loadTorihikisakiList();
 
-      if (selected_torihikisaki_id) {
+      if (torihikisaki_id) {
         //document.getElementById("torihikisaki_id").value = selected_torihikisaki_id;
         //document.getElementById("torihikisaki_id").readOnly = true;
+        selected_torihikisaki_id = torihikisaki_id
+	await loadTorihikisakiName();
         document.getElementById("torihikisaki_name").readOnly = true;
       }
 
@@ -212,10 +240,10 @@
   <h3>検索条件</h3>
 
   <label>年</label>
-  <input id="year"></select>
+  <select id="year"></select>
 
   <label>月</label>
-  <input id="month"></select>
+  <select id="month"></select>
 
   <br>
 
