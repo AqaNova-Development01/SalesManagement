@@ -12,6 +12,8 @@
     // ----------------------------
     await requireLogin();
 
+    loadList();
+
     const params = new URLSearchParams(window.location.search);
     const from = params.get("from");
 
