@@ -5,17 +5,15 @@
   <title>取引先一覧</title>
 
   <script type="module">
-    import { supabase, requireLogin } from "./check-login.js";
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // ----------------------------
-    // ログインチェック
-    // ----------------------------
-    await requireLogin();
-
-    loadList();
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
 
     const params = new URLSearchParams(window.location.search);
-    const from = params.get("from");
+    const from = params.get("from");   // 呼び出し元画面名（例：hinmoku, uriage, shiire など）
 
     // ----------------------------
     // 一覧読み込み
@@ -29,12 +27,10 @@
         .order("kana");
 
       if (filter) {
-        query = query.or(
-          `id.ilike.%${filter}%,name.ilike.%${filter}%,kana.ilike.%${filter}%,address.ilike.%${filter}%,department.ilike.%${filter}%,person.ilike.%${filter}%`
-        );
+        query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%,kana.ilike.%${filter}%,address.ilike.%${filter}%,department.ilike.%${filter}%,person.ilike.%${filter}%`);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
@@ -76,24 +72,29 @@
     // ----------------------------
     // 初期処理
     // ----------------------------
-    window.addEventListener("DOMContentLoaded", loadList);
+    window.addEventListener("DOMContentLoaded", async () => {
+      loadList();
+    });
 
     // ----------------------------
-    // 行選択
+    // 行選択 → 呼び出し元に戻る（汎用版）
     // ----------------------------
     function selectRow(id) {
       if (from) {
+        // 例：from=uriage → uriage.html?torihikisaki_id=TK00001
         window.location.href = `${from}.html?torihikisaki_id=${id}`;
       } else {
+        // 呼び出し元が指定されていない場合は取引先画面へ
         window.location.href = "torihikisaki.html?id=" + id;
       }
     }
 
     // ----------------------------
-    // 新規作成
+    // 新規作成 → 呼び出し元に応じて遷移
     // ----------------------------
     function goNew() {
       if (from) {
+        // 例：from=hinmoku → hinmoku.html（新規）
         window.location.href = `${from}.html`;
       } else {
         window.location.href = "torihikisaki.html";
@@ -118,7 +119,7 @@
 
   <h2>取引先一覧</h2>
 
-  <input id="filter" type="text" placeholder="コード / 会社名 / カナ / 部署 / 担当者">
+  <input id="filter" type="text" placeholder="コード / 会社名 / カナ / 部署　/ 担当者">
   <button onclick="loadList()">検索</button>
 
   <div id="listArea"></div>
@@ -130,3 +131,5 @@
 
 </body>
 </html>
+
+
