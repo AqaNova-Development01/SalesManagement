@@ -49,13 +49,14 @@
     // 取引先一覧をドロップダウンにセット
     // ----------------------------
     async function loadTorihikisakiList() {
-      const { data } = await supabase
+      let query = supabase
         .from("torihikisaki")
         .select("id, name")
         .order("id");
       if (kubun === "KI") {
         query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
       }
+      const { data } = await query;
 
       const list = document.getElementById("torihikisaki_list");
 
