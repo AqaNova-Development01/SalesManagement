@@ -152,7 +152,9 @@
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-          <td><button onclick="editUriage('${r.id}')">編集</button> </td>
+          <td>
+            <button onclick="editUriage('${r.id}')">編集</button>
+          </td>
           <td>${r.id}</td>
           <td>${r.torihikisaki?.name || ""}</td>
           <td>${r.item}</td>
@@ -161,7 +163,6 @@
           <td>${r.amount}</td>
           <td>${r.delivery_date || ""}</td>
           <td>${r.keijo_date || ""}</td>
-          </tr>
         `;
 
         tbody.appendChild(tr);
