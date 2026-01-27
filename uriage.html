@@ -5,11 +5,15 @@
   <title>売上／仕入 入力</title>
 
   <script type="module">
-    import { supabase, requireLogin } from "./check-login.js";
-    await requireLogin();
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
 
     let currentUser = null;
+
 
     async function loadUser() {
       const { data } = await supabase.auth.getUser();
