@@ -130,7 +130,7 @@
       if (error) alert("登録エラー: " + error.message);
       else {
         alert("登録しました（コード：" + code + "）");
-        clearForm();
+        goList();
       }
     }
 
@@ -150,7 +150,7 @@
       if (error) alert("更新エラー: " + error.message);
       else {
         alert("更新しました");
-        clearForm();
+        goList();
       }
     }
 
