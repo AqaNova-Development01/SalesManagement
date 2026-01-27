@@ -22,7 +22,9 @@
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://aqanova-development01.github.io/SalesManagement/reset-password.html"
+      });
 
       if (error) {
         msg.textContent = "送信に失敗しました：" + error.message;
@@ -59,4 +61,17 @@
     }
     #msg {
       margin-top: 15px;
-      color
+      color: green;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>パスワードリセット</h2>
+
+  <input id="email" type="email" placeholder="メールアドレス">
+  <button onclick="resetPassword()">再設定メールを送信</button>
+
+  <div id="msg"></div>
+</body>
+</html>
