@@ -2,45 +2,65 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>売上入力</title>
+  <title>売上／仕入 入力</title>
 
   <script type="module">
-    import { supabase, requireLogin, loadUser } from "./check-login.js";
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // ----------------------------
-    // ログインチェック & ユーザー取得
-    // ----------------------------
-    await requireLogin();
-    const currentUser = await loadUser();
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    let currentUser = null;
+
+
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      currentUser = data.user;
+    }
 
     const params = new URLSearchParams(window.location.search);
-    const kubun = "UR";  // ★ 売上固定
+    const kubun = params.get("kubun"); // UR or KI
     const selectedId = params.get("id");
 
     // ----------------------------
     // 取引先ドロップダウン
     // ----------------------------
     async function loadTorihikisakiSelect() {
+      //const { data } = await supabase
       let query = supabase
         .from("torihikisaki")
         .select("id, name")
         .order("id");
-
-      // 売上は自社固定
-      query = query.eq("id", "TK00000");
-
+      if (kubun === "KI") {
+        query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
+      }
       const { data } = await query;
+
 
       const sel = document.getElementById("torihikisaki_select");
       sel.innerHTML = "";
 
-      const opt = document.createElement("option");
-      opt.value = "TK00000";
-      opt.textContent = "TK00000：自社";
-      sel.appendChild(opt);
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "（選択してください）";
+      sel.appendChild(blank);
+
+      data.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = `${t.id}：${t.name}`;
+        sel.appendChild(opt);
+      });
     }
 
     async function loadTorihikisakiName(id) {
+      if (!id) {
+        document.getElementById("torihikisaki_name").value = "";
+        return;
+      }
+
       const { data } = await supabase
         .from("torihikisaki")
         .select("name")
@@ -83,11 +103,14 @@
     // データ読込
     // ----------------------------
     async function loadData(id) {
+      //const table = (kubun === "UR") ? "uriage" : "shiire";
+      const table = "kakekin";
+
       const { data } = await supabase
-        .from("kakekin")
+        .from(table)
         .select("*")
         .eq("id", id)
-        .eq("kake_kbn", "UR")
+        .eq("kake_kbn",kubun)
         .single();
 
       document.getElementById("id").value = data.id;
@@ -108,7 +131,7 @@
       document.getElementById("memo").value = data.memo || "";
 
       document.getElementById("torihikisaki_select").value = data.torihikisaki_id;
-      document.getElementById("torihikisaki_select").disabled = true;
+      document.getElementById("torihikisaki_select").disabled = (kubun === "UR");
 
       loadTorihikisakiName(data.torihikisaki_id);
       updateButtonState();
@@ -118,8 +141,10 @@
     // 採番
     // ----------------------------
     async function generateCode() {
+      const prefix = (kubun === "UR") ? "UR" : "KI";
+
       const { data, error } = await supabase.rpc("get_next_document_code", {
-        prefix: "UR"
+        prefix: prefix
       });
 
       if (error) {
@@ -136,11 +161,14 @@
       const code = await generateCode();
       if (!code) return;
 
+      //const table = (kubun === "UR") ? "uriage" : "shiire";
+      const table = "kakekin";
+
       const data = collectForm();
       data.id = code;
       data.created_by = currentUser.id;
 
-      const { error } = await supabase.from("kakekin").insert(data);
+      const { error } = await supabase.from(table).insert(data);
 
       if (error) alert("登録エラー: " + error.message);
       else {
@@ -154,15 +182,17 @@
     // ----------------------------
     async function updateData() {
       const id = document.getElementById("id").value;
+      //const table = (kubun === "UR") ? "uriage" : "shiire";
+      const table = "kakekin";
 
       const data = collectForm();
       data.updated_by = currentUser.id;
 
       const { error } = await supabase
-        .from("kakekin")
+        .from(table)
         .update(data)
         .eq("id", id)
-        .eq("kake_kbn", "UR");
+        .eq("kake_kbn",kubun);
 
       if (error) alert("更新エラー: " + error.message);
       else {
@@ -172,17 +202,20 @@
     }
 
     // ----------------------------
-    // 削除
+    // 削除（有効）
     // ----------------------------
     async function deleteData() {
       const id = document.getElementById("id").value;
       if (!confirm("本当に削除しますか？")) return;
 
+      //const table = (kubun === "UR") ? "uriage" : "shiire";
+      const table = "kakekin";
+
       const { error } = await supabase
-        .from("kakekin")
+        .from(table)
         .delete()
         .eq("id", id)
-        .eq("kake_kbn", "UR");
+        .eq("kake_kbn",kubun);
 
       if (error) alert("削除エラー: " + error.message);
       else {
@@ -196,7 +229,7 @@
     // ----------------------------
     function collectForm() {
       return {
-        kake_kbn: "UR",
+        kake_kbn: kubun,  // ★ UR or KI を必ず登録
         torihikisaki_id: document.getElementById("torihikisaki_id").value,
         hinmoku_id: document.getElementById("hinmoku_id").value,
 
@@ -226,31 +259,64 @@
     // 一覧へ戻る
     // ----------------------------
     window.goList = function() {
-      location.href = `list.html?kubun=UR`;
+      location.href = `list.html?kubun=${kubun}`;
     };
 
     // ----------------------------
-    // 初期処理（DOMContentLoaded は使わない）
+    // 初期処理
     // ----------------------------
-    await loadTorihikisakiSelect();
-    await loadTorihikisakiName("TK00000");
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadUser();
+      await loadTorihikisakiSelect();
 
-    if (selectedId) {
-      await loadData(selectedId);
-    }
+      document.getElementById("title_kubun").innerText =
+        (kubun === "UR") ? "売上入力" : "仕入入力";
 
-    // 品目一覧から戻ってきた場合
-    const hinmokuIdFromList = params.get("hinmoku_id");
-    if (hinmokuIdFromList) {
-      document.getElementById("hinmoku_id").value = hinmokuIdFromList;
-      await loadHinmokuInfo();
-    }
+      document.getElementById("title_kubun2").innerText =
+        (kubun === "UR") ? "◆◆◆ 売上情報 ◆◆◆" : "◆◆◆ 仕入情報 ◆◆◆";
 
-    updateButtonState();
+      if (kubun === "UR") {
+        document.getElementById("torihikisaki_select").value = "TK00000";
+        document.getElementById("torihikisaki_select").disabled = true;
+        document.getElementById("torihikisaki_id").value = "TK00000";
+        loadTorihikisakiName("TK00000");
+      } else if (kubun === "KI") {
+        document.getElementById("btnMitumoriDetailList").style.display = "none";
+      }
+
+      if (selectedId) {
+        await loadData(selectedId);
+      }
+
+      // ★ 品目一覧から戻ってきた場合の反映
+      const torihikisakiIdFromList = params.get("torihikisaki_id");
+      const hinmokuIdFromList = params.get("hinmoku_id");
+
+      // ① 取引先ID の反映
+      if (torihikisakiIdFromList) {
+        document.getElementById("torihikisaki_id").value = torihikisakiIdFromList;
+        document.getElementById("torihikisaki_select").value = torihikisakiIdFromList;
+        await loadTorihikisakiName(torihikisakiIdFromList);
+        document.getElementById("torihikisaki_select").disabled = true;
+      }
+
+      if (hinmokuIdFromList) {
+        document.getElementById("hinmoku_id").value = hinmokuIdFromList;
+        await loadHinmokuInfo();  // ← 品目名・単価・単位・税率を自動セット
+      }
+
+      updateButtonState();
+    });
 
     // ----------------------------
-    // イベント
+    // ドロップダウン変更
     // ----------------------------
+    document.getElementById("torihikisaki_select").addEventListener("change", () => {
+      const tid = document.getElementById("torihikisaki_select").value;
+      document.getElementById("torihikisaki_id").value = tid;
+      loadTorihikisakiName(tid);
+    });
+
     document.getElementById("quantity").addEventListener("input", calcAmount);
     document.getElementById("price").addEventListener("input", calcAmount);
 
@@ -264,9 +330,15 @@
       const hid = document.getElementById("hinmoku_id").value;
 
       location.href =
-        `hinmoku-list.html?from=uriage&kubun=UR&torihikisaki_id=${tid}&hinmoku_id=${hid}`;
+        `hinmoku-list.html?from=uriage&kubun=${kubun}&torihikisaki_id=${tid}&hinmoku_id=${hid}`;
     };
 
+
+    window.openMitumoriDetailList = function() {
+      if (kubun === "UR") {
+        location.href = "document_detail-list.html?from=uriage";
+      }
+    };
   </script>
 
   <style>
@@ -279,7 +351,7 @@
 
 <body>
 
-  <h2>売上入力</h2>
+  <h2 id="title_kubun">売上／仕入 入力</h2>
 
   <h3>◆◆◆ 取引先 ◆◆◆</h3>
 
@@ -292,13 +364,13 @@
   <label>取引先名</label>
   <input id="torihikisaki_name" type="text" readonly>
 
-  <h3>◆◆◆ 売上情報 ◆◆◆</h3>
-
+  <h3 id="title_kubun2">売上／仕入情報</h3>
   <label>ID</label>
   <input id="id" type="text" readonly>
 
   <h3>品目</h3>
   <button onclick="openHinmokuList()">品目一覧へ</button>
+  <button id="btnMitumoriDetailList" onclick="openMitumoriDetailList()">見積明細一覧へ</button>
 
   <label>品目ID</label>
   <input id="hinmoku_id" type="text" readonly>
