@@ -144,8 +144,7 @@
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-          <tr>
-          <td><button onclick="editUriage('${r.id}')">編集</button> </td>
+          <button onclick="editUriage('${r.id}')">編集</button> </td>
           <td>${r.id}</td>
           <td>${r.torihikisaki?.name || ""}</td>
           <td>${r.item}</td>
