@@ -53,6 +53,9 @@
         .from("torihikisaki")
         .select("id, name")
         .order("id");
+      if (kubun === "KI") {
+        query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
+      }
 
       const list = document.getElementById("torihikisaki_list");
 
@@ -107,6 +110,10 @@
         .eq("kake_kbn", kubun)   // ★ UR or KI を必ず絞る
         .order("id", { ascending: false });
 
+      if (kubun === "KI") {
+        query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
+      }
+
       // 売上画面から取引先ID連携あり → 固定
       if (selected_torihikisaki_id) {
         query = query.eq("torihikisaki_id", selected_torihikisaki_id);
@@ -144,7 +151,7 @@
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-          <button onclick="editUriage('${r.id}')">編集</button> </td>
+          <td><button onclick="editUriage('${r.id}')">編集</button> </td>
           <td>${r.id}</td>
           <td>${r.torihikisaki?.name || ""}</td>
           <td>${r.item}</td>
@@ -175,8 +182,8 @@
       await loadTorihikisakiList();
 
       if (selected_torihikisaki_id) {
-        document.getElementById("torihikisaki_id").value = selected_torihikisaki_id;
-        document.getElementById("torihikisaki_id").readOnly = true;
+        //document.getElementById("torihikisaki_id").value = selected_torihikisaki_id;
+        //document.getElementById("torihikisaki_id").readOnly = true;
         document.getElementById("torihikisaki_name").readOnly = true;
       }
 
