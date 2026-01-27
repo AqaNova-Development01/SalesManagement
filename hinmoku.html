@@ -5,17 +5,23 @@
   <title>品目マスタ</title>
 
   <script type="module">
-    import { supabase, requireLogin, loadUser } from "./check-login.js";
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // ----------------------------
-    // ログインチェック & ユーザー取得
-    // ----------------------------
-    await requireLogin();
-    const currentUser = await loadUser();
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    let currentUser = null;
+
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      currentUser = data.user;
+    }
 
     const params = new URLSearchParams(window.location.search);
-    const selectedId = params.get("id");
-    const torihikisaki_id_from_prev = params.get("torihikisaki_id");
+    const selectedId = params.get("id");                     // 品目ID（編集時）
+    const torihikisaki_id_from_prev = params.get("torihikisaki_id"); // 一覧から渡された取引先ID
 
     // ----------------------------
     // 取引先一覧をドロップダウンにセット
@@ -75,6 +81,7 @@
       document.getElementById("memo").value = data.memo || "";
       document.getElementById("torihikisaki_id").value = data.torihikisaki_id;
 
+      // ドロップダウン反映
       document.getElementById("torihikisaki_select").value = data.torihikisaki_id;
       document.getElementById("torihikisaki_select").disabled = true;
 
@@ -83,7 +90,7 @@
     }
 
     // ----------------------------
-    // 採番
+    // 登録（採番対応）
     // ----------------------------
     async function generateHinmokuCode(tid) {
       const { data, error } = await supabase.rpc("get_next_hinmoku_code", {
@@ -98,9 +105,6 @@
       return data;
     }
 
-    // ----------------------------
-    // 登録
-    // ----------------------------
     async function registerData() {
       const tid = document.getElementById("torihikisaki_id").value;
       const name = document.getElementById("name").value.trim();
@@ -168,16 +172,23 @@
     // フォームクリア
     // ----------------------------
     function clearForm() {
-      document.querySelectorAll("input, textarea").forEach(el => el.value = "");
+      document.getElementById("id").value = "";
+      document.getElementById("name").value = "";
+      document.getElementById("unit").value = "";
+      document.getElementById("price").value = "";
+      document.getElementById("tax_rate").value = "";
+      document.getElementById("memo").value = "";
+      document.getElementById("torihikisaki_id").value = "";
+      document.getElementById("torihikisaki_name").value = "";
       updateButtonState();
     }
 
     // ----------------------------
-    // ボタン活性制御
+    // ボタン活性/非活性制御
     // ----------------------------
     function updateButtonState() {
       const id = document.getElementById("id").value;
-      const name = document.getElementById("name").value.trim();
+      const name = document.getElementById("name").value;
 
       const btnRegister = document.getElementById("btnRegister");
       const btnUpdate = document.getElementById("btnUpdate");
@@ -186,7 +197,8 @@
         btnRegister.disabled = true;
         btnUpdate.disabled = false;
       } else {
-        btnRegister.disabled = name === "";
+        btnRegister.disabled = name.trim() === "";
+        btnRegister.disabled = false;
         btnUpdate.disabled = true;
       }
     }
@@ -205,24 +217,32 @@
     };
 
     // ----------------------------
-    // 初期処理（DOMContentLoaded は使わない）
+    // 初期処理
     // ----------------------------
-    await loadTorihikisakiSelect();
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadUser();
+      await loadTorihikisakiSelect();
 
-    if (selectedId) {
-      await loadData(selectedId);
-    } else if (torihikisaki_id_from_prev) {
-      document.getElementById("torihikisaki_select").value = torihikisaki_id_from_prev;
-      document.getElementById("torihikisaki_select").disabled = true;
+      // 編集モード
+      if (selectedId) {
+        await loadData(selectedId);
+        return;
+      }
 
-      document.getElementById("torihikisaki_id").value = torihikisaki_id_from_prev;
-      loadTorihikisakiName(torihikisaki_id_from_prev);
-    }
+      // 新規モード（一覧から取引先IDが渡された場合）
+      if (torihikisaki_id_from_prev) {
+        document.getElementById("torihikisaki_select").value = torihikisaki_id_from_prev;
+        document.getElementById("torihikisaki_select").disabled = true;
 
-    updateButtonState();
+        document.getElementById("torihikisaki_id").value = torihikisaki_id_from_prev;
+        loadTorihikisakiName(torihikisaki_id_from_prev);
+      }
+
+      updateButtonState();
+    });
 
     // ----------------------------
-    // ドロップダウン変更
+    // ドロップダウン変更時
     // ----------------------------
     document.getElementById("torihikisaki_select").addEventListener("change", () => {
       const tid = document.getElementById("torihikisaki_select").value;
