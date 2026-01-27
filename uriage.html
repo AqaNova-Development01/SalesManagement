@@ -259,7 +259,8 @@
     // 一覧へ戻る
     // ----------------------------
     window.goList = function() {
-      location.href = `list.html?kubun=${kubun}&torihikisaki_id=${selectedId}`;
+      const tid = document.getElementById("torihikisaki_id").value;
+      location.href = `list.html?kubun=${kubun}&torihikisaki_id=${tid}`;
     };
 
     // ----------------------------
