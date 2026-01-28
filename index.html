@@ -19,6 +19,22 @@
       if (!data.session) {
         window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
       }
+    const user = data.session.user;
+
+    // ★ public.users から role を取得
+    const { data: userInfo } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const role = userInfo?.role || "user";
+
+    // ★ admin 以外は非表示
+    if (role !== "admin") {
+      document.getElementById("master-section").style.display = "none";
+      document.getElementById("user-section").style.display = "none";
+    }
     }
 
     // ----------------------------
@@ -96,13 +112,17 @@
   <button onclick="location.href='csv_mitumori.html'">見積 CSV</button>
 
   <!-- マスタ管理 -->
+<div id="master-section">
   <h3>マスタ管理</h3>
   <button onclick="location.href='torihikisaki-list.html'">取引先マスター</button>
   <button onclick="location.href='hinmoku-list.html'">品目マスター</button>
+</div>
 
   <!-- ユーザー設定 -->
+<div id="user-section">
   <h3>ユーザー</h3>
   <button onclick="location.href='admin-create-user.html'">ユーザー作成</button>
+</div>
 
   <button onclick="logout()">ログアウト</button>
 
