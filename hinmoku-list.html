@@ -12,18 +12,23 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    window.location.href = "login.html";
-  }
-
-
     const params = new URLSearchParams(window.location.search);
     const torihikisaki_id = params.get("torihikisaki_id");
     const from = params.get("from");   // 呼び出し元画面（uriage, shiire, document, hinmoku）
     const kubun = params.get("kubun"); // ★ UR or KI（売上/仕入区分）
     let selected_torihikisaki_id = params.get("torihikisaki_id") || null;
 
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
     // ----------------------------
     // 取引先一覧をドロップダウンにセット
     // ----------------------------
@@ -191,6 +196,9 @@
     // 初期処理
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
+
+      if (!(await checkLogin())) return;
+
       await loadTorihikisakiList();
 
       if (torihikisaki_id) {
