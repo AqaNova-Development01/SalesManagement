@@ -12,14 +12,7 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    window.location.href = "login.html";
-  }
-
-
     let currentUser = null;
-
 
     async function loadUser() {
       const { data } = await supabase.auth.getUser();
@@ -29,6 +22,18 @@
     const params = new URLSearchParams(window.location.search);
     const kubun = params.get("kubun"); // UR or KI
     const selectedId = params.get("id");
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
 
     // ----------------------------
     // 取引先ドロップダウン
@@ -273,6 +278,9 @@
     // 初期処理
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
+
+      if (!(await checkLogin())) return;
+
       await loadUser();
       await loadTorihikisakiSelect();
 
