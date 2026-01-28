@@ -296,7 +296,8 @@
         document.getElementById("torihikisaki_id").value = "TK00000";
         loadTorihikisakiName("TK00000");
       } else if (kubun === "KI") {
-        document.getElementById("btnMitumoriDetailList").style.display = "none";
+        document.getElementById("btnMitumoriDetailList").innerText = "発注明細一覧へ";
+        //document.getElementById("btnMitumoriDetailList").style.display = "none";
       }
 
       if (selectedId) {
@@ -351,7 +352,9 @@
 
     window.openMitumoriDetailList = function() {
       if (kubun === "UR") {
-        location.href = "document_detail-list.html?from=uriage";
+        location.href = "document_detail-list.html?from=uriage?kubun=${kubun}&torihikisaki_id=TK00000";
+      } else if (kubun === "KI") {
+        location.href = "document_detail-list.html?from=uriage?kubun=${kubun}&torihikisaki_id=${tid}";
       }
     };
   </script>
