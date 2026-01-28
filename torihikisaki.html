@@ -12,14 +12,19 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    window.location.href = "login.html";
-  }
-
-
-
     let currentUser = null;
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
 
     // ----------------------------
     // ログインユーザー取得
@@ -238,6 +243,8 @@
     // 初期処理
     // ----------------------------
     loadUser();
+
+    if (!(await checkLogin())) return;
 
     if (selectedId) {
       loadData(selectedId);
