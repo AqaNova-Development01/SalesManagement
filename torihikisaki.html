@@ -151,26 +151,6 @@
       }
     }
 
-    // ----------------------------
-    // 削除
-    // ----------------------------
-    async function deleteData() {
-      const id = document.getElementById("id").value;
-
-      if (!confirm("本当に削除しますか？")) return;
-
-      const { error } = await supabase
-        .from("torihikisaki")
-        .delete()
-        .eq("id", id);
-
-      if (error) alert("削除エラー: " + error.message);
-      else {
-        alert("削除しました");
-        clearForm();
-        goList();
-      }
-    }
 
     // ----------------------------
     // フォーム収集
@@ -226,21 +206,21 @@
 
       const btnRegister = document.getElementById("btnRegister");
       const btnUpdate = document.getElementById("btnUpdate");
-      const btnDelete = document.getElementById("btnDelete");
+      //const btnDelete = document.getElementById("btnDelete");
 
       if (id) {
         btnRegister.disabled = true;
         btnUpdate.disabled = false;
-        btnDelete.disabled = false;
+        //btnDelete.disabled = false;
       } else {
         btnRegister.disabled = false;
 
         if (name.trim() === "") {
           btnUpdate.disabled = true;
-          btnDelete.disabled = true;
+          //btnDelete.disabled = true;
         } else {
           btnUpdate.disabled = false;
-          btnDelete.disabled = true;
+          //btnDelete.disabled = true;
         }
       }
     }
@@ -268,7 +248,7 @@
 
     window.registerData = registerData;
     window.updateData = updateData;
-    window.deleteData = deleteData;
+    //window.deleteData = deleteData;
     window.goList = goList;
   </script>
 
@@ -333,7 +313,6 @@
 
   <button id="btnRegister" onclick="registerData()">登録（自動採番）</button>
   <button id="btnUpdate" onclick="updateData()">更新</button>
-  <button id="btnDelete" onclick="deleteData()">削除</button>
 
   <button onclick="goList()">一覧へ</button>
   <button onclick="location.href='index.html'">メニューへ</button>
