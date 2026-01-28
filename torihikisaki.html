@@ -244,8 +244,6 @@
     // ----------------------------
     loadUser();
 
-    if (!(await checkLogin())) return;
-
     if (selectedId) {
       loadData(selectedId);
     } else {
