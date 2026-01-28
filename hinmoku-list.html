@@ -12,33 +12,26 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-  const user = localStorage.getItem("user");
-  if (!user) {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
     window.location.href = "login.html";
   }
 
 
     const params = new URLSearchParams(window.location.search);
     const torihikisaki_id = params.get("torihikisaki_id");
-    const from = params.get("from");   // 呼び出し元画面（uriage, shiire, document, hinmoku）
-    const kubun = params.get("kubun"); // ★ UR or KI（売上/仕入区分）
-    let selected_torihikisaki_id = params.get("torihikisaki_id") || null;
+    const from = params.get("from");   // uriage / shiire / document / hinmoku
+    const kubun = params.get("kubun"); // UR / KI
+    let selected_torihikisaki_id = torihikisaki_id || null;
 
     // ----------------------------
     // 取引先一覧をドロップダウンにセット
     // ----------------------------
     async function loadTorihikisakiList() {
-
-      //const { data } = await supabase
-      let query = supabase
+      const { data } = await supabase
         .from("torihikisaki")
         .select("id, name")
         .order("id");
-
-      if (kubun === "KI") {
-        query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
-      }
-      const { data } = await query;
 
       const list = document.getElementById("torihikisaki_list");
 
@@ -51,34 +44,13 @@
     }
 
     // ----------------------------
-    // 取引先名 自動取得
-    // ----------------------------
-    async function loadTorihikisakiName() {
-      if (!torihikisaki_id) {
-        document.getElementById("torihikisaki_name").value = "";
-        return;
-      }
-
-      const { data } = await supabase
-        .from("torihikisaki")
-        .select("name")
-        .eq("id", torihikisaki_id)
-        .single();
-
-      document.getElementById("torihikisaki_name").value = data?.name || "";
-    }
-
-    // ----------------------------
     // 取引先名 → ID 自動セット
     // ----------------------------
     function onTorihikisakiNameInput() {
       const name = document.getElementById("torihikisaki_name").value;
-
-      if (!name) {
-        selected_torihikisaki_id = null;
-      }
-
       const list = document.getElementById("torihikisaki_list").options;
+
+      selected_torihikisaki_id = null;
 
       for (let opt of list) {
         if (opt.value === name) {
@@ -93,7 +65,6 @@
     // ----------------------------
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
-
       onTorihikisakiNameInput();
 
       let query = supabase
@@ -101,18 +72,17 @@
         .select("*, torihikisaki:torihikisaki_id(name)")
         .order("name");
 
+      // 取引先絞り込み
       if (selected_torihikisaki_id) {
         query = query.eq("torihikisaki_id", selected_torihikisaki_id);
       }
-      if (kubun === "KI") {
-        query = query.not("torihikisaki_id", "eq", "TK00000");  // ★ 自社を除外
-      }
 
+      // 品目ID / 名称検索
       if (filter) {
         query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%`);
       }
 
-      let { data, error } = await query;
+      const { data, error } = await query;
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
@@ -151,7 +121,7 @@
     // ----------------------------
     window.selectRow = function(id, tid) {
 
-      // ★ 売上 or 仕入から来た場合（kubun が必要）
+      // ★ 売上（UR）または仕入（KI）から来た場合
       if (from === "uriage" || from === "shiire") {
         window.location.href =
           `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
@@ -170,7 +140,7 @@
     };
 
     // ----------------------------
-    // 新規作成 → 呼び出し元に応じて遷移
+    // 新規作成
     // ----------------------------
     window.goNew = function() {
 
@@ -195,7 +165,7 @@
 
       if (torihikisaki_id) {
         selected_torihikisaki_id = torihikisaki_id;
-        await loadTorihikisakiName();
+        document.getElementById("torihikisaki_name").value = torihikisaki_id;
         document.getElementById("torihikisaki_name").readOnly = true;
       }
 
