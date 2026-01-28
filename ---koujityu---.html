@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>工事中</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+
+      if (!(await checkLogin())) return;
+
+    });
+
+  </script>
+
+</head>
+
+<body>
+
+  <h2>◆◆◆ 現在工事中（機能拡充までお待ちください） ◆◆◆</h2>
+
+  <button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+</html>
