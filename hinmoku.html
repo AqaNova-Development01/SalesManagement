@@ -12,11 +12,6 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    window.location.href = "login.html";
-  }
-
     let currentUser = null;
 
     async function loadUser() {
@@ -27,6 +22,18 @@
     const params = new URLSearchParams(window.location.search);
     const selectedId = params.get("id");                     // 品目ID（編集時）
     const torihikisaki_id_from_prev = params.get("torihikisaki_id"); // 一覧から渡された取引先ID
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
 
     // ----------------------------
     // 取引先一覧をドロップダウンにセット
@@ -225,6 +232,9 @@
     // 初期処理
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
+
+      if (!(await checkLogin())) return;
+
       await loadUser();
       await loadTorihikisakiSelect();
 
