@@ -18,7 +18,7 @@
     let selected_torihikisaki_id = torihikisaki_id || null;
 
     // ----------------------------
-    // 年月ドロップダウン初期化
+    // ログインチェック
     // ----------------------------
     async function checkLogin() {
       const { data } = await supabase.auth.getSession();
