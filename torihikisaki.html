@@ -242,20 +242,27 @@
     // ----------------------------
     // 初期処理
     // ----------------------------
-    loadUser();
+    window.addEventListener("DOMContentLoaded", async () => {
+    
+      // ★ ログインチェック
+      if (!(await checkLogin())) return;
+    
+      // ★ ログインユーザー取得
+      await loadUser();
+    
+      // ★ データ読込 or 新規
+      if (selectedId) {
+        await loadData(selectedId);
+      } else {
+        updateButtonState();
+      }
 
-    if (selectedId) {
-      loadData(selectedId);
-    } else {
-      updateButtonState();
-    }
-
-    document.addEventListener("input", updateButtonState);
-
-    window.registerData = registerData;
-    window.updateData = updateData;
-    //window.deleteData = deleteData;
-    window.goList = goList;
+      document.addEventListener("input", updateButtonState);
+      window.registerData = registerData;
+      window.updateData = updateData;
+      //window.deleteData = deleteData;
+      window.goList = goList;
+    });
   </script>
 
   <style>
