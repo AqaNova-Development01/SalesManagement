@@ -12,15 +12,22 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    window.location.href = "login.html";
-  }
-
     const params = new URLSearchParams(window.location.search);
     const kubun = params.get("kubun"); // UR or KI
     const torihikisaki_id = params.get("torihikisaki_id") || "";
     let selected_torihikisaki_id = torihikisaki_id || null;
+
+    // ----------------------------
+    // 年月ドロップダウン初期化
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
 
     // ----------------------------
     // 年月ドロップダウン初期化
@@ -219,6 +226,9 @@
     // 初期処理
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
+
+      if (!(await checkLogin())) return;
+
       initYearMonth();
       await loadTorihikisakiList();
 
