@@ -12,6 +12,12 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
+  const user = localStorage.getItem("user");
+  if (!user) {
+    window.location.href = "login.html";
+  }
+
+
     let currentUser = null;
 
     // ----------------------------
