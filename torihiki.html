@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>入金／支払 登録</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    let currentUser = null;
+    let selected_torihikisaki_id = null;
+    let mode = "register"; // register / update
+
+    const params = new URLSearchParams(window.location.search);
+    const kubun = params.get("kubun"); // NY or SI
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      currentUser = data.user;
+    }
+
+    // ----------------------------
+    // 年月ドロップダウン
+    // ----------------------------
+    function initYearMonth() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+
+      const yearSel = document.getElementById("year");
+      const monthSel = document.getElementById("month");
+
+      for (let y = year - 3; y <= year + 1; y++) {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        if (y === year) opt.selected = true;
+        yearSel.appendChild(opt);
+      }
+
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement("option");
+        opt.value = m.toString().padStart(2, "0");
+        opt.textContent = m;
+        if (m === month) opt.selected = true;
+        monthSel.appendChild(opt);
+      }
+    }
+
+    // ----------------------------
+    // 取引先リスト
+    // ----------------------------
+    async function loadTorihikisakiList() {
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("id, name")
+        .order("id");
+
+      const list = document.getElementById("torihikisaki_list");
+      list.innerHTML = "";
+
+      data.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = `${t.id} ${t.name}`;
+        opt.dataset.id = t.id;
+        list.appendChild(opt);
+      });
+    }
+
+    function onTorihikisakiInput() {
+      const v = document.getElementById("torihikisaki_input").value;
+      const list = document.getElementById("torihikisaki_list").options;
+
+      for (let opt of list) {
+        if (opt.value === v) {
+          selected_torihikisaki_id = opt.dataset.id;
+          return;
+        }
+      }
+
+      // ID 直接入力にも対応
+      const id = v.split(" ")[0];
+      selected_torihikisaki_id = id;
+    }
+
+    // ----------------------------
+    // 採番
+    // ----------------------------
+    async function getNextNumber(kbn, yymm) {
+      const prefix = kbn + yymm;
+
+      const { data, error } = await supabase
+        .from("numbering")
+        .select("last_number")
+        .eq("code", prefix)
+        .single();
+
+      let nextNo = 1;
+
+      if (data) {
+        nextNo = data.last_number + 1;
+
+        await supabase
+          .from("numbering")
+          .update({ last_number: nextNo })
+          .eq("code", prefix);
+      } else {
+        await supabase
+          .from("numbering")
+          .insert({ code: prefix, last_number: 1 });
+      }
+
+      return prefix + String(nextNo).padStart(4, "0");
+    }
+
+    // ----------------------------
+    // 登録
+    // ----------------------------
+    async function register() {
+      if (!selected_torihikisaki_id) {
+        alert("取引先を選択してください");
+        return;
+      }
+
+      const y = document.getElementById("year").value;
+      const m = document.getElementById("month").value;
+      const yymm = y + m;
+
+      const id = await getNextNumber(kubun, yymm);
+
+      const data = {
+        id,
+        torihiki_kbn: kubun,
+        torihikisaki_id: selected_torihikisaki_id,
+        torihiki_date: document.getElementById("torihiki_date").value,
+        amount: Number(document.getElementById("amount").value),
+        method: document.getElementById("method").value,
+        memo: document.getElementById("memo").value,
+        created_by: currentUser.id
+      };
+
+      const { error } = await supabase.from("torihiki").insert(data);
+
+      if (error) {
+        alert("登録エラー: " + error.message);
+        return;
+      }
+
+      alert("登録しました");
+      clearForm();
+      loadHistory();
+    }
+
+    // ----------------------------
+    // 更新
+    // ----------------------------
+    async function update() {
+      const id = document.getElementById("id").value;
+
+      const data = {
+        torihikisaki_id: selected_torihikisaki_id,
+        torihiki_date: document.getElementById("torihiki_date").value,
+        amount: Number(document.getElementById("amount").value),
+        method: document.getElementById("method").value,
+        memo: document.getElementById("memo").value,
+        updated_by: currentUser.id
+      };
+
+      const { error } = await supabase
+        .from("torihiki")
+        .update(data)
+        .eq("id", id);
+
+      if (error) {
+        alert("更新エラー: " + error.message);
+        return;
+      }
+
+      alert("更新しました");
+      clearForm();
+      loadHistory();
+      mode = "register";
+    }
+
+    // ----------------------------
+    // 削除
+    // ----------------------------
+    async function deleteTorihiki(id) {
+      if (id.startsWith("NYZK") || id.startsWith("KIZK")) {
+        alert("繰越残高は削除できません");
+        return;
+      }
+
+      if (!confirm("削除しますか？")) return;
+
+      const { error } = await supabase
+        .from("torihiki")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        alert("削除エラー: " + error.message);
+        return;
+      }
+
+      alert("削除しました");
+      clearForm();
+      loadHistory();
+    }
+
+    // ----------------------------
+    // 編集
+    // ----------------------------
+    async function edit(id) {
+      const { data } = await supabase
+        .from("torihiki")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      document.getElementById("id").value = data.id;
+      document.getElementById("torihikisaki_input").value = data.torihikisaki_id;
+      selected_torihikisaki_id = data.torihikisaki_id;
+      document.getElementById("torihiki_date").value = data.torihiki_date;
+      document.getElementById("amount").value = data.amount;
+      document.getElementById("method").value = data.method;
+      document.getElementById("memo").value = data.memo;
+
+      mode = "update";
+    }
+
+    // ----------------------------
+    // 履歴表示
+    // ----------------------------
+    async function loadHistory() {
+      const y = document.getElementById("year").value;
+      const m = document.getElementById("month").value;
+    
+      const start = `${y}-${m}-01`;
+      const next = new Date(y, Number(m), 1);
+      next.setMonth(next.getMonth() + 1);
+      const end = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,"0")}-01`;
+    
+      const { data, error } = await supabase
+        .from("torihiki")
+        .select(`
+          id,
+          torihiki_date,
+          amount,
+          method,
+          memo,
+          torihikisaki(name)
+        `)
+        .eq("torihiki_kbn", kubun)        // ← ★ 取引区分で絞る（NY or SI）
+        .gte("torihiki_date", start)      // ← ★ 月初
+        .lt("torihiki_date", end)         // ← ★ 翌月1日
+        .order("torihiki_date");
+    
+      renderHistory(data);
+    }
+
+    function renderHistory(rows) {
+      const tbody = document.getElementById("history_list");
+      tbody.innerHTML = "";
+
+      rows.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>
+            <button onclick="edit('${r.id}')">編集</button>
+            <button onclick="deleteTorihiki('${r.id}')">削除</button>
+          </td>
+          <td>${r.torihiki_date}</td>
+          <td>${r.torihikisaki?.name || ""}</td>
+          <td>${r.amount.toLocaleString()}</td>
+          <td>${r.method || ""}</td>
+          <td>${r.memo || ""}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ----------------------------
+    // フォームクリア
+    // ----------------------------
+    function clearForm() {
+      document.getElementById("id").value = "";
+      document.getElementById("torihikisaki_input").value = "";
+      document.getElementById("torihiki_date").value = "";
+      document.getElementById("amount").value = "";
+      document.getElementById("method").value = "";
+      document.getElementById("memo").value = "";
+      mode = "register";
+    }
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!(await checkLogin())) return;
+      await loadUser();
+
+      document.getElementById("title_kubun").innerText =
+        kubun === "NY" ? "入金 登録" : "支払 登録";
+
+      initYearMonth();
+      await loadTorihikisakiList();
+      loadHistory();
+    });
+
+    window.register = register;
+    window.update = update;
+    window.deleteTorihiki = deleteTorihiki;
+    window.edit = edit;
+    window.onTorihikisakiInput = onTorihikisakiInput;
+    window.loadHistory = loadHistory;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    input, select, textarea { padding: 6px; margin: 4px; width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #eee; }
+  </style>
+</head>
+
+<body>
+
+  <h2 id="title_kubun">入金／支払 登録</h2>
+
+  <h3>登録フォーム</h3>
+
+  <input id="id" type="text" readonly placeholder="取引番号（編集時のみ表示）">
+
+  <label>取引先</label>
+  <input id="torihikisaki_input" list="torihikisaki_list"
+         placeholder="取引先名またはコード"
+         oninput="onTorihikisakiInput()">
+  <datalist id="torihikisaki_list"></datalist>
+
+  <label>日付</label>
+  <input id="torihiki_date" type="date">
+
+  <label>金額</label>
+  <input id="amount" type="number">
+
+  <label>入金方法</label>
+  <select id="method">
+    <option value="">（選択してください）</option>
+    <option value="現金">現金</option>
+    <option value="振込">振込</option>
+    <option value="手形">手形</option>
+    <option value="相殺">相殺</option>
+    <option value="その他">その他</option>
+    <option value="累計調整">累計調整</option>
+  </select>
+
+  <label>備考</label>
+  <textarea id="memo"></textarea>
+
+  <button onclick="mode==='register'?register():update()">
+    登録／更新
+  </button>
+
+  <button onclick="clearForm()">クリア</button>
+
+  <h3>履歴（対象月）</h3>
+
+  <label>年</label>
+  <select id="year"></select>
+
+  <label>月</label>
+  <select id="month"></select>
+
+  <button onclick="loadHistory()">表示</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>操作</th>
+        <th>日付</th>
+        <th>取引先</th>
+        <th>金額</th>
+        <th>方法</th>
+        <th>備考</th>
+      </tr>
+    </thead>
+    <tbody id="history_list"></tbody>
+  </table>
+
+  <button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+</html>
