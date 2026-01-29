@@ -65,39 +65,42 @@
     }
 
     // ----------------------------
-    // 取引先リスト
+    // 取引先リスト（自社を除外）
     // ----------------------------
     async function loadTorihikisakiList() {
-      const { data } = await supabase
+      let query = supabase
         .from("torihikisaki")
         .select("id, name")
         .order("id");
-
-      const list = document.getElementById("torihikisaki_list");
-      list.innerHTML = "";
-
+    
+      // ★ 自社を除外
+      query = query.not("id", "eq", "TK00000");
+    
+      const { data } = await query;
+    
+      const sel = document.getElementById("torihikisaki_select");
+      sel.innerHTML = "";
+    
+      // 空欄
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "（選択してください）";
+      sel.appendChild(blank);
+    
+      // 取引先を追加
       data.forEach(t => {
         const opt = document.createElement("option");
-        opt.value = `${t.id} ${t.name}`;
-        opt.dataset.id = t.id;
-        list.appendChild(opt);
+        opt.value = t.id;                        // ← ID を value にする
+        opt.textContent = `${t.id} ${t.name}`;   // ← 表示は ID + 名前
+        sel.appendChild(opt);                    // ← ★ select に追加
       });
     }
 
-    function onTorihikisakiInput() {
-      const v = document.getElementById("torihikisaki_input").value;
-      const list = document.getElementById("torihikisaki_list").options;
-
-      for (let opt of list) {
-        if (opt.value === v) {
-          selected_torihikisaki_id = opt.dataset.id;
-          return;
-        }
-      }
-
-      // ID 直接入力にも対応
-      const id = v.split(" ")[0];
-      selected_torihikisaki_id = id;
+    // ----------------------------
+    // 取引先名 → ID 自動セット
+    // ----------------------------
+    function onTorihikisakiSelect() {
+      const name = document.getElementById("torihikisaki_select").value;
     }
 
     // ----------------------------
@@ -106,7 +109,7 @@
     async function getNextNumber(kbn, yymm) {
       const prefix = kbn + yymm;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("numbering")
         .select("last_number")
         .eq("code", prefix)
@@ -236,8 +239,9 @@
         .single();
 
       document.getElementById("id").value = data.id;
-      document.getElementById("torihikisaki_input").value = data.torihikisaki_id;
+      document.getElementById("torihikisaki_select").value = data.torihikisaki_id;
       selected_torihikisaki_id = data.torihikisaki_id;
+
       document.getElementById("torihiki_date").value = data.torihiki_date;
       document.getElementById("amount").value = data.amount;
       document.getElementById("method").value = data.method;
@@ -247,18 +251,18 @@
     }
 
     // ----------------------------
-    // 履歴表示
+    // 履歴表示（取引日で検索）
     // ----------------------------
     async function loadHistory() {
       const y = document.getElementById("year").value;
       const m = document.getElementById("month").value;
-    
+
       const start = `${y}-${m}-01`;
       const next = new Date(y, Number(m), 1);
       next.setMonth(next.getMonth() + 1);
       const end = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,"0")}-01`;
-    
-      const { data, error } = await supabase
+
+      const { data } = await supabase
         .from("torihiki")
         .select(`
           id,
@@ -268,11 +272,11 @@
           memo,
           torihikisaki(name)
         `)
-        .eq("torihiki_kbn", kubun)        // ← ★ 取引区分で絞る（NY or SI）
-        .gte("torihiki_date", start)      // ← ★ 月初
-        .lt("torihiki_date", end)         // ← ★ 翌月1日
+        .eq("torihiki_kbn", kubun)
+        .gte("torihiki_date", start)
+        .lt("torihiki_date", end)
         .order("torihiki_date");
-    
+
       renderHistory(data);
     }
 
@@ -302,7 +306,8 @@
     // ----------------------------
     function clearForm() {
       document.getElementById("id").value = "";
-      document.getElementById("torihikisaki_input").value = "";
+      document.getElementById("torihikisaki_select").value = "";
+      selected_torihikisaki_id = null;
       document.getElementById("torihiki_date").value = "";
       document.getElementById("amount").value = "";
       document.getElementById("method").value = "";
@@ -329,13 +334,14 @@
     window.update = update;
     window.deleteTorihiki = deleteTorihiki;
     window.edit = edit;
-    window.onTorihikisakiInput = onTorihikisakiInput;
+    window.onTorihikisakiSelect = onTorihikisakiSelect;
     window.loadHistory = loadHistory;
+
   </script>
 
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
-    input, select, textarea { padding: 6px; margin: 4px; width: 100%; }
+    input, select, textarea { padding: 6px; margin: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #eee; }
@@ -346,23 +352,20 @@
 
   <h2 id="title_kubun">入金／支払 登録</h2>
 
-  <h3>登録フォーム</h3>
+  <h3>■ 登録フォーム</h3>
 
   <input id="id" type="text" readonly placeholder="取引番号（編集時のみ表示）">
+<br>
 
-  <label>取引先</label>
-  <input id="torihikisaki_input" list="torihikisaki_list"
-         placeholder="取引先名またはコード"
-         oninput="onTorihikisakiInput()">
-  <datalist id="torihikisaki_list"></datalist>
+  <label>取引先 :</label>
+  <select id="torihikisaki_select" list="torihikisaki_list" onchange="onTorihikisakiSelect()"></select>
+<br>
 
-  <label>日付</label>
+  <label>日付  :</label>
   <input id="torihiki_date" type="date">
+<br>
 
-  <label>金額</label>
-  <input id="amount" type="number">
-
-  <label>入金方法</label>
+  <label>入金方法:</label>
   <select id="method">
     <option value="">（選択してください）</option>
     <option value="現金">現金</option>
@@ -373,8 +376,14 @@
     <option value="累計調整">累計調整</option>
   </select>
 
-  <label>備考</label>
+  <label>金額:</label>
+  <input id="amount" type="number">
+<br>
+
+
+  <label>備考:</label>
   <textarea id="memo"></textarea>
+<br>
 
   <button onclick="mode==='register'?register():update()">
     登録／更新
@@ -382,7 +391,7 @@
 
   <button onclick="clearForm()">クリア</button>
 
-  <h3>履歴（対象月）</h3>
+  <h3>■ 履歴（対象月）</h3>
 
   <label>年</label>
   <select id="year"></select>
