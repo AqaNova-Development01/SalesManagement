@@ -341,10 +341,11 @@
 
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
-    input, select, textarea { padding: 6px; margin: 4px; }
+    input, select, textarea { padding: 6px; margin: 4px; width: 100%;}
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #eee; }
+    #torihikisaki_select, #torihiki_date, #method, #amount, #year, #month {width: auto; display: inline-block;}
   </style>
 </head>
 
@@ -359,7 +360,6 @@
 
   <label>取引先 :</label>
   <select id="torihikisaki_select" list="torihikisaki_list" onchange="onTorihikisakiSelect()"></select>
-<br>
 
   <label>日付  :</label>
   <input id="torihiki_date" type="date">
