@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>入金／支払 登録</title>
 
+  <!-- JS を一番上に配置（他画面と同じ構成） -->
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -14,7 +15,6 @@
 
     let currentUser = null;
     let selected_torihikisaki_id = null;
-    let mode = "register"; // register / update
 
     const params = new URLSearchParams(window.location.search);
     const kubun = params.get("kubun"); // NY or SI
@@ -72,33 +72,27 @@
         .from("torihikisaki")
         .select("id, name")
         .order("id");
-    
-      // ★ 自社を除外
-      query = query.not("id", "eq", "TK00000");
-    
+
+      query = query.not("id", "eq", "TK00000"); // 自社除外
+
       const { data } = await query;
-    
+
       const sel = document.getElementById("torihikisaki_select");
       sel.innerHTML = "";
-    
-      // 空欄
+
       const blank = document.createElement("option");
       blank.value = "";
       blank.textContent = "（選択してください）";
       sel.appendChild(blank);
-    
-      // 取引先を追加
+
       data.forEach(t => {
         const opt = document.createElement("option");
-        opt.value = t.id;                        // ← ID を value にする
-        opt.textContent = `${t.id} ${t.name}`;   // ← 表示は ID + 名前
-        sel.appendChild(opt);                    // ← ★ select に追加
+        opt.value = t.id;
+        opt.textContent = `${t.id} ${t.name}`;
+        sel.appendChild(opt);
       });
     }
 
-    // ----------------------------
-    // 取引先名 → ID 自動セット
-    // ----------------------------
     function onTorihikisakiSelect() {
       selected_torihikisaki_id = document.getElementById("torihikisaki_select").value;
     }
@@ -106,31 +100,18 @@
     // ----------------------------
     // 採番
     // ----------------------------
-    async function getNextNumber(kbn, yymm) {
-      const prefix = kbn + yymm;
-
-      const { data } = await supabase
-        .from("numbering")
-        .select("last_number")
-        .eq("code", prefix)
-        .single();
-
-      let nextNo = 1;
-
-      if (data) {
-        nextNo = data.last_number + 1;
-
-        await supabase
-          .from("numbering")
-          .update({ last_number: nextNo })
-          .eq("code", prefix);
-      } else {
-        await supabase
-          .from("numbering")
-          .insert({ code: prefix, last_number: 1 });
+    async function generateCode() {
+      const prefix = (kubun === "NY") ? "NY" : "SI";
+    
+      const { data, error } = await supabase.rpc("get_next_document_code", {
+        prefix: prefix
+      });
+    
+      if (error) {
+        alert("採番エラー: " + error.message);
+        return null;
       }
-
-      return prefix + String(nextNo).padStart(4, "0");
+      return data;
     }
 
     // ----------------------------
@@ -142,11 +123,7 @@
         return;
       }
 
-      const y = document.getElementById("year").value;
-      const m = document.getElementById("month").value;
-      const yymm = y + m;
-
-      const id = await getNextNumber(kubun, yymm);
+      const id = await generateCode();
 
       const data = {
         id,
@@ -199,7 +176,6 @@
       alert("更新しました");
       clearForm();
       loadHistory();
-      mode = "register";
     }
 
     // ----------------------------
@@ -247,11 +223,13 @@
       document.getElementById("method").value = data.method;
       document.getElementById("memo").value = data.memo;
 
-      mode = "update";
+      // ★ ボタン切り替え
+      document.getElementById("btn_register").disabled = true;
+      document.getElementById("btn_update").disabled = false;
     }
 
     // ----------------------------
-    // 履歴表示（取引日で検索）
+    // 履歴表示
     // ----------------------------
     async function loadHistory() {
       const y = document.getElementById("year").value;
@@ -302,7 +280,7 @@
     }
 
     // ----------------------------
-    // フォームクリア
+    // クリア
     // ----------------------------
     function clearForm() {
       document.getElementById("id").value = "";
@@ -312,7 +290,10 @@
       document.getElementById("amount").value = "";
       document.getElementById("method").value = "";
       document.getElementById("memo").value = "";
-      mode = "register";
+
+      // ★ 初期状態に戻す
+      document.getElementById("btn_register").disabled = false;
+      document.getElementById("btn_update").disabled = true;
     }
 
     // ----------------------------
@@ -325,28 +306,35 @@
       document.getElementById("title_kubun").innerText =
         kubun === "NY" ? "入金 登録" : "支払 登録";
 
+      document.getElementById("btn_register").disabled = false;
+      document.getElementById("btn_update").disabled = true;
+
       initYearMonth();
       await loadTorihikisakiList();
       loadHistory();
     });
 
+    // HTML から呼べるように公開
     window.register = register;
     window.update = update;
     window.deleteTorihiki = deleteTorihiki;
     window.edit = edit;
     window.onTorihikisakiSelect = onTorihikisakiSelect;
     window.loadHistory = loadHistory;
+    window.clearForm = clearForm;
 
   </script>
 
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
-    input, select, textarea { padding: 6px; margin: 4px; width: 100%;}
+    input, select, textarea { padding: 6px; margin: 4px; width: 100%; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #eee; }
     #torihikisaki_select, #torihiki_date, #method, #amount, #year, #month {width: auto; display: inline-block;}
+
   </style>
+
 </head>
 
 <body>
@@ -356,14 +344,14 @@
   <h3>■ 登録フォーム</h3>
 
   <input id="id" type="text" readonly placeholder="取引番号（編集時のみ表示）">
-<br>
+  <br>
 
   <label>取引先 :</label>
   <select id="torihikisaki_select" onchange="onTorihikisakiSelect()"></select>
 
-  <label>日付  :</label>
+  <label>日付 :</label>
   <input id="torihiki_date" type="date">
-<br>
+  <br>
 
   <label>入金方法:</label>
   <select id="method">
@@ -378,17 +366,14 @@
 
   <label>金額:</label>
   <input id="amount" type="number">
-<br>
-
+  <br>
 
   <label>備考:</label>
   <textarea id="memo"></textarea>
-<br>
+  <br>
 
-  <button onclick="mode==='register'?register():update()">
-    登録／更新
-  </button>
-
+  <button id="btn_register" onclick="register()">登録</button>
+  <button id="btn_update" onclick="update()" disabled>更新</button>
   <button onclick="clearForm()">クリア</button>
 
   <h3>■ 履歴（対象月）</h3>
