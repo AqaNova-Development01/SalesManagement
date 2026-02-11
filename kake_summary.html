@@ -36,7 +36,7 @@
     // ----------------------------
     function initYearMonth() {
       const now = new Date();
-      const year = now.getFullYear();
+      const year = now.getFullFullYear();
       const month = now.getMonth() + 1;
 
       const yearSel = document.getElementById("year");
@@ -103,6 +103,7 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${r.torihikisaki_id}</td>
+          <td>${r.torihikisaki_name}</td>
           <td>${r.kisyobalance.toLocaleString()}</td>
           <td>${r.kake.toLocaleString()}</td>
           <td>${r.kake_tax.toLocaleString()}</td>
@@ -117,6 +118,7 @@
       tr.style.fontWeight = "bold";
       tr.innerHTML = `
         <td>【合計】</td>
+        <td></td>
         <td>${total_kisyo.toLocaleString()}</td>
         <td>${total_kake.toLocaleString()}</td>
         <td>${total_tax.toLocaleString()}</td>
@@ -127,23 +129,27 @@
     }
 
     // ----------------------------
-    // CSV 出力
+    // CSV 出力（BOM付き UTF-8）
     // ----------------------------
     function exportCSV() {
       const rows = [...document.querySelectorAll("#list tr")];
-      let csv = "取引先ID,期首残高,掛金(税抜),税額,入金/支払,期末残高\n";
+      let csv = "\uFEFF取引先ID,取引先名,期首残高,掛金(税抜),税額,入金/支払,期末残高\n";
 
       rows.forEach(tr => {
         const cols = [...tr.children].map(td => td.textContent);
         csv += cols.join(",") + "\n";
       });
 
-      const blob = new Blob([csv], { type: "text/csv" });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
+
+      const year = document.getElementById("year").value;
+      const month = document.getElementById("month").value.padStart(2, "0");
+      const kubunName = kubun === "UR" ? "売掛" : "買掛";
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = "kake_summary.csv";
+      a.download = `${kubunName}_${year}_${month}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -154,9 +160,15 @@
     function exportPDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      doc.text("掛金集計", 14, 10);
+
+      const year = document.getElementById("year").value;
+      const month = document.getElementById("month").value.padStart(2, "0");
+      const kubunName = kubun === "UR" ? "売掛" : "買掛";
+
+      doc.text(`${kubunName}集計 ${year}年${month}月`, 14, 10);
       doc.autoTable({ html: "#result_table" });
-      doc.save("kake_summary.pdf");
+
+      doc.save(`${kubunName}_${year}_${month}.pdf`);
     }
 
     // ----------------------------
@@ -181,7 +193,7 @@
   </script>
 
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    body { font-family: sans-serif; padding: 20px; max-width: 1000px; margin: auto; }
     input, select { padding: 6px; margin: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
@@ -209,6 +221,7 @@
     <thead>
       <tr>
         <th>取引先ID</th>
+        <th>取引先名</th>
         <th>期首残高（税込）</th>
         <th>掛金（税抜）</th>
         <th>税額</th>
