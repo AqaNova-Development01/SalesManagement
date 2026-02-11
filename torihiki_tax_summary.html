@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>取引先別 税区分別集計</title>
+
+  <!-- jsPDF（必要なら PDF 対応用） -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const kubun = params.get("kubun"); // UR or KI
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+    // ----------------------------
+    // 年月ドロップダウン
+    // ----------------------------
+    function initYearMonth() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+
+      const yearSel = document.getElementById("year");
+      const monthSel = document.getElementById("month");
+
+      for (let y = year - 3; y <= year + 1; y++) {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        if (y === year) opt.selected = true;
+        yearSel.appendChild(opt);
+      }
+
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        if (m === month) opt.selected = true;
+        monthSel.appendChild(opt);
+      }
+    }
+
+    // ----------------------------
+    // RPC 呼び出し
+    // ----------------------------
+    async function search() {
+      const year = Number(document.getElementById("year").value);
+      const month = Number(document.getElementById("month").value);
+
+      const { data, error } = await supabase.rpc("get_torihiki_tax_summary", {
+        p_kubun: kubun,
+        p_year: year,
+        p_month: month
+      });
+
+      if (error) {
+        alert("集計エラー: " + error.message);
+        return;
+      }
+
+      renderTable(data || []);
+    }
+
+    // ----------------------------
+    // 表描画
+    // ----------------------------
+    function renderTable(rows) {
+      const tbody = document.getElementById("list");
+      tbody.innerHTML = "";
+
+      rows.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.torihikisaki_id}</td>
+          <td>${r.torihikisaki_name}</td>
+          <td>${(r.tax_rate * 100).toFixed(0)}%</td>
+          <td>${r.total_amount.toLocaleString()}</td>
+          <td>${r.total_by_torihiki.toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ----------------------------
+    // CSV 出力（BOM付き UTF-8、カンマ無し）
+    // ----------------------------
+    function exportCSV() {
+      const rows = [...document.querySelectorAll("#list tr")];
+      let csv = "\uFEFF取引先ID,取引先名,税区分,税込額,総合計\n";
+
+      rows.forEach(tr => {
+        const cols = [...tr.children].map(td =>
+          td.textContent.replace(/,/g, "")
+        );
+        csv += cols.join(",") + "\n";
+      });
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const year = document.getElementById("year").value;
+      const month = document.getElementById("month").value.padStart(2, "0");
+      const kubunName = kubun === "UR" ? "売掛" : "買掛";
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${kubunName}_税区分別_${year}_${month}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!(await checkLogin())) return;
+
+      initYearMonth();
+
+      document.getElementById("title_kubun").innerText =
+        kubun === "UR" ? "売掛金 税区分別集計" : "買掛金 税区分別集計";
+
+      search();
+    });
+
+    // 関数を window に公開
+    window.search = search;
+    window.exportCSV = exportCSV;
+
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 1000px; margin: auto; }
+    input, select { padding: 6px; margin: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #eee; }
+  </style>
+</head>
+
+<body>
+
+  <h2 id="title_kubun">税区分別集計</h2>
+
+  <h3>検索条件</h3>
+
+  <label>年</label>
+  <select id="year"></select>
+
+  <label>月</label>
+  <select id="month"></select>
+
+  <button onclick="search()">集計</button>
+
+  <h3>集計結果</h3>
+
+  <table id="result_table">
+    <thead>
+      <tr>
+        <th>取引先ID</th>
+        <th>取引先名</th>
+        <th>税区分</th>
+        <th>税込額</th>
+        <th>総合計</th>
+      </tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+
+  <button onclick="exportCSV()">CSV出力</button>
+  <button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+</html>
