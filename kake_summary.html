@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>売掛／買掛 集計</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    import jsPDF from "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js";
+    import "https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.js";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const kubun = params.get("kubun"); // UR or KI
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+    // ----------------------------
+    // 年月ドロップダウン
+    // ----------------------------
+    function initYearMonth() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+
+      const yearSel = document.getElementById("year");
+      const monthSel = document.getElementById("month");
+
+      for (let y = year - 3; y <= year + 1; y++) {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        if (y === year) opt.selected = true;
+        yearSel.appendChild(opt);
+      }
+
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        if (m === month) opt.selected = true;
+        monthSel.appendChild(opt);
+      }
+    }
+
+    // ----------------------------
+    // 集計 RPC 呼び出し
+    // ----------------------------
+    async function search() {
+      const year = Number(document.getElementById("year").value);
+      const month = Number(document.getElementById("month").value);
+
+      const { data, error } = await supabase.rpc("get_kake_summary", {
+        p_kubun: kubun,
+        p_year: year,
+        p_month: month
+      });
+
+      if (error) {
+        alert("集計エラー: " + error.message);
+        return;
+      }
+
+      renderTable(data || []);
+    }
+
+    // ----------------------------
+    // 表描画
+    // ----------------------------
+    function renderTable(rows) {
+      const tbody = document.getElementById("list");
+      tbody.innerHTML = "";
+
+      let total_kisyo = 0;
+      let total_kake = 0;
+      let total_tax = 0;
+      let total_nyukin = 0;
+      let total_kimatsu = 0;
+
+      rows.forEach(r => {
+        total_kisyo += r.kisyobalance;
+        total_kake += r.kake;
+        total_tax += r.kake_tax;
+        total_nyukin += r.nyukin;
+        total_kimatsu += r.kimatsubalance;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.torihikisaki_id}</td>
+          <td>${r.kisyobalance.toLocaleString()}</td>
+          <td>${r.kake.toLocaleString()}</td>
+          <td>${r.kake_tax.toLocaleString()}</td>
+          <td>${r.nyukin.toLocaleString()}</td>
+          <td>${r.kimatsubalance.toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 合計行
+      const tr = document.createElement("tr");
+      tr.style.fontWeight = "bold";
+      tr.innerHTML = `
+        <td>【合計】</td>
+        <td>${total_kisyo.toLocaleString()}</td>
+        <td>${total_kake.toLocaleString()}</td>
+        <td>${total_tax.toLocaleString()}</td>
+        <td>${total_nyukin.toLocaleString()}</td>
+        <td>${total_kimatsu.toLocaleString()}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // ----------------------------
+    // CSV 出力
+    // ----------------------------
+    function exportCSV() {
+      const rows = [...document.querySelectorAll("#list tr")];
+      let csv = "取引先ID,期首残高,掛金(税抜),税額,入金/支払,期末残高\n";
+
+      rows.forEach(tr => {
+        const cols = [...tr.children].map(td => td.textContent);
+        csv += cols.join(",") + "\n";
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "kake_summary.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ----------------------------
+    // PDF 出力
+    // ----------------------------
+    function exportPDF() {
+      const doc = new jsPDF();
+      doc.text("掛金集計", 14, 10);
+      doc.autoTable({ html: "#result_table" });
+      doc.save("kake_summary.pdf");
+    }
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!(await checkLogin())) return;
+
+      initYearMonth();
+
+      document.getElementById("title_kubun").innerText =
+        kubun === "UR" ? "売掛金 集計" : "買掛金 集計";
+
+      search();
+    });
+
+    window.search = search;
+    window.exportCSV = exportCSV;
+    window.exportPDF = exportPDF;
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    input, select { padding: 6px; margin: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #eee; }
+  </style>
+</head>
+
+<body>
+
+  <h2 id="title_kubun">掛金 集計</h2>
+
+  <h3>検索条件</h3>
+
+  <label>年</label>
+  <select id="year"></select>
+
+  <label>月</label>
+  <select id="month"></select>
+
+  <button onclick="search()">集計</button>
+
+  <h3>集計結果</h3>
+
+  <table id="result_table">
+    <thead>
+      <tr>
+        <th>取引先ID</th>
+        <th>期首残高（税込）</th>
+        <th>掛金（税抜）</th>
+        <th>税額</th>
+        <th>入金／支払（税込）</th>
+        <th>期末残高（税込）</th>
+      </tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+
+  <button onclick="exportCSV()">CSV出力</button>
+  <button onclick="exportPDF()">PDF出力</button>
+  <button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+</html>
