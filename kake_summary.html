@@ -4,10 +4,12 @@
   <meta charset="UTF-8">
   <title>売掛／買掛 集計</title>
 
+  <!-- jsPDF（UMD版） -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
+
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-    import jsPDF from "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js";
-    import "https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.js";
 
     const supabase = createClient(
       "https://omzcbfjtwyygvvgxsiov.supabase.co",
@@ -150,6 +152,7 @@
     // PDF 出力
     // ----------------------------
     function exportPDF() {
+      const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       doc.text("掛金集計", 14, 10);
       doc.autoTable({ html: "#result_table" });
@@ -170,9 +173,11 @@
       search();
     });
 
+    // 関数を window に公開
     window.search = search;
     window.exportCSV = exportCSV;
     window.exportPDF = exportPDF;
+
   </script>
 
   <style>
