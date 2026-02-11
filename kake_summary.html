@@ -77,11 +77,14 @@
         return;
       }
 
-      renderTable(data || []);
-
+      // ★ 集計した年月を保存
       window._lastSummaryYear = year;
       window._lastSummaryMonth = month;
+
+      // ★ 画面に表示
       document.getElementById("summary_ym").innerText = `${year}年${month}月`;
+
+      renderTable(data || []);
     }
 
     // ----------------------------
@@ -133,16 +136,27 @@
     }
 
     // ----------------------------
-    // CSV 出力（BOM付き UTF-8、カンマ無し）
+    // 共通：集計済み年月チェック
     // ----------------------------
-    function exportCSV() {
+    function checkSummaryUpToDate() {
       const year = Number(document.getElementById("year").value);
       const month = Number(document.getElementById("month").value);
-    
-      if (year !== window._lastSummaryYear || month !== window._lastSummaryMonth) {
+
+      if (
+        window._lastSummaryYear !== year ||
+        window._lastSummaryMonth !== month
+      ) {
         alert("集計結果が最新ではありません。もう一度『集計』を押してください。");
-        return;
+        return false;
       }
+      return true;
+    }
+
+    // ----------------------------
+    // CSV 出力
+    // ----------------------------
+    function exportCSV() {
+      if (!checkSummaryUpToDate()) return;
 
       const rows = [...document.querySelectorAll("#list tr")];
       let csv = "\uFEFF取引先ID,取引先名,期首残高,掛金(税抜),税額,入金/支払,期末残高\n";
@@ -169,20 +183,15 @@
     }
 
     // ----------------------------
-    // PDF 出力（日本語フォント fetch）
+    // PDF 出力
     // ----------------------------
     async function exportPDF() {
-      const year = Number(document.getElementById("year").value);
-      const month = Number(document.getElementById("month").value);
-    
-      if (year !== window._lastSummaryYear || month !== window._lastSummaryMonth) {
-        alert("集計結果が最新ではありません。もう一度『集計』を押してください。");
-        return;
-      }
+      if (!checkSummaryUpToDate()) return;
+
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // ★ フォントを fetch で読み込む
+      // フォント読み込み
       const fontUrl = "fonts/NotoSansJP-Regular.ttf";
       const fontData = await fetch(fontUrl)
         .then(r => r.arrayBuffer())
@@ -195,7 +204,6 @@
           )
         );
 
-      // ★ jsPDF にフォント登録
       doc.addFileToVFS("NotoSansJP-Regular.ttf", fontData);
       doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
       doc.setFont("NotoSansJP");
@@ -260,9 +268,10 @@
 
   <button onclick="search()">集計</button>
 
-<h3>
-  集計結果 <span id="summary_ym" style="margin-left:10px;color:#555;"></span>
-</h3>
+  <h3>
+    集計結果
+    <span id="summary_ym" style="margin-left:10px;color:#555;"></span>
+  </h3>
 
   <table id="result_table">
     <thead>
