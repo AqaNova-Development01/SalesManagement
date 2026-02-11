@@ -166,6 +166,26 @@
     }
 
     // ----------------------------
+    // 入力日付コピー処理
+    // ----------------------------
+    // 出荷日を入力したら → 納品日・計上日にコピー
+    document.getElementById("ship_date").addEventListener("change", e => {
+      const v = e.target.value;
+      if (v) {
+        document.getElementById("delivery_date").value = v;
+        document.getElementById("keijo_date").value = v;
+      }
+    });
+    
+    // 納品日を入力したら → 計上日にコピー
+    document.getElementById("delivery_date").addEventListener("change", e => {
+      const v = e.target.value;
+      if (v) {
+        document.getElementById("keijo_date").value = v;
+      }
+    });
+
+    // ----------------------------
     // 登録
     // ----------------------------
     async function registerData() {
