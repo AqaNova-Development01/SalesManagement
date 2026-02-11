@@ -36,17 +36,17 @@
     // ----------------------------
     function initYearMonth() {
       const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
+      const thisYear = now.getFullYear();
+      const thisMonth = now.getMonth() + 1;
 
       const yearSel = document.getElementById("year");
       const monthSel = document.getElementById("month");
 
-      for (let y = year - 3; y <= year + 1; y++) {
+      for (let y = thisYear - 3; y <= thisYear + 1; y++) {
         const opt = document.createElement("option");
         opt.value = y;
         opt.textContent = y;
-        if (y === year) opt.selected = true;
+        if (y === thisYear) opt.selected = true;
         yearSel.appendChild(opt);
       }
 
@@ -54,7 +54,7 @@
         const opt = document.createElement("option");
         opt.value = m;
         opt.textContent = m;
-        if (m === month) opt.selected = true;
+        if (m === thisMonth) opt.selected = true;
         monthSel.appendChild(opt);
       }
     }
@@ -63,13 +63,13 @@
     // 集計 RPC 呼び出し
     // ----------------------------
     async function search() {
-      const year = Number(document.getElementById("year").value);
-      const month = Number(document.getElementById("month").value);
+      const selYear = Number(document.getElementById("year").value);
+      const selMonth = Number(document.getElementById("month").value);
 
       const { data, error } = await supabase.rpc("get_kake_summary", {
         p_kubun: kubun,
-        p_year: year,
-        p_month: month
+        p_year: selYear,
+        p_month: selMonth
       });
 
       if (error) {
@@ -78,11 +78,11 @@
       }
 
       // ★ 集計した年月を保存
-      window._lastSummaryYear = year;
-      window._lastSummaryMonth = month;
+      window._lastSummaryYear = selYear;
+      window._lastSummaryMonth = selMonth;
 
       // ★ 画面に表示
-      document.getElementById("summary_ym").innerText = `${year}年${month}月`;
+      document.getElementById("summary_ym").innerText = `${selYear}年${selMonth}月`;
 
       renderTable(data || []);
     }
@@ -139,12 +139,12 @@
     // 共通：集計済み年月チェック
     // ----------------------------
     function checkSummaryUpToDate() {
-      const year = Number(document.getElementById("year").value);
-      const month = Number(document.getElementById("month").value);
+      const selYear = Number(document.getElementById("year").value);
+      const selMonth = Number(document.getElementById("month").value);
 
       if (
-        window._lastSummaryYear !== year ||
-        window._lastSummaryMonth !== month
+        window._lastSummaryYear !== selYear ||
+        window._lastSummaryMonth !== selMonth
       ) {
         alert("集計結果が最新ではありません。もう一度『集計』を押してください。");
         return false;
@@ -168,16 +168,16 @@
         csv += cols.join(",") + "\n";
       });
 
+      const selYear = document.getElementById("year").value;
+      const selMonth = document.getElementById("month").value.padStart(2, "0");
+      const kubunName = kubun === "UR" ? "売掛" : "買掛";
+
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
 
-      const year = document.getElementById("year").value;
-      const month = document.getElementById("month").value.padStart(2, "0");
-      const kubunName = kubun === "UR" ? "売掛" : "買掛";
-
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${kubunName}_${year}_${month}.csv`;
+      a.download = `${kubunName}_${selYear}_${selMonth}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -208,11 +208,11 @@
       doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
       doc.setFont("NotoSansJP");
 
-      const year = document.getElementById("year").value;
-      const month = document.getElementById("month").value.padStart(2, "0");
+      const selYear = document.getElementById("year").value;
+      const selMonth = document.getElementById("month").value.padStart(2, "0");
       const kubunName = kubun === "UR" ? "売掛" : "買掛";
 
-      doc.text(`${kubunName}集計 ${year}年${month}月`, 14, 10);
+      doc.text(`${kubunName}集計 ${selYear}年${selMonth}月`, 14, 10);
 
       doc.autoTable({
         html: "#result_table",
@@ -221,7 +221,7 @@
         bodyStyles: { font: "NotoSansJP" }
       });
 
-      doc.save(`${kubunName}_${year}_${month}.pdf`);
+      doc.save(`${kubunName}_${selYear}_${selMonth}.pdf`);
     }
 
     // ----------------------------
