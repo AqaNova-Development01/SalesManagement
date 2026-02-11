@@ -92,7 +92,7 @@
         tr.innerHTML = `
           <td>${r.torihikisaki_id}</td>
           <td>${r.torihikisaki_name}</td>
-          <td>${(r.tax_rate * 100).toFixed(0)}%</td>
+          <td>${(r.tax_rate * 100).toFixed(0)}</td>
           <td>${r.total_amount.toLocaleString()}</td>
           <td>${r.total_by_torihiki.toLocaleString()}</td>
         `;
@@ -105,7 +105,7 @@
     // ----------------------------
     function exportCSV() {
       const rows = [...document.querySelectorAll("#list tr")];
-      let csv = "\uFEFF取引先ID,取引先名,税区分,税込額,総合計\n";
+      let csv = "\uFEFF取引先ID,取引先名,税区分(%),税込額,総合計\n";
 
       rows.forEach(tr => {
         const cols = [...tr.children].map(td =>
@@ -178,7 +178,7 @@
       <tr>
         <th>取引先ID</th>
         <th>取引先名</th>
-        <th>税区分</th>
+        <th>税区分(%)</th>
         <th>税込額</th>
         <th>総合計</th>
       </tr>
