@@ -8,8 +8,8 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 
-  <!-- ★ 日本語フォント（NotoSansJP） -->
-  <script src="https://cdn.jsdelivr.net/gh/yuki-kimoto/jspdf-fonts/NotoSansJP-Regular.js"></script>
+  <!-- ★ 日本語フォント（Sazanami Mincho） -->
+  <script src="https://unpkg.com/jspdf-font-sazanami"></script>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -165,9 +165,9 @@
       const doc = new jsPDF();
 
       // ★ 日本語フォントを登録
-      doc.addFileToVFS("NotoSansJP-Regular.ttf", NotoSansJP_Regular);
-      doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
-      doc.setFont("NotoSansJP");
+      doc.addFileToVFS("SazanamiMincho-Regular.ttf", SazanamiMincho_Regular);
+      doc.addFont("SazanamiMincho-Regular.ttf", "Sazanami", "normal");
+      doc.setFont("Sazanami");
 
       const year = document.getElementById("year").value;
       const month = document.getElementById("month").value.padStart(2, "0");
@@ -177,9 +177,9 @@
 
       doc.autoTable({
         html: "#result_table",
-        styles: { font: "NotoSansJP" },
-        headStyles: { font: "NotoSansJP" },
-        bodyStyles: { font: "NotoSansJP" }
+        styles: { font: "Sazanami" },
+        headStyles: { font: "Sazanami" },
+        bodyStyles: { font: "Sazanami" }
       });
 
       doc.save(`${kubunName}_${year}_${month}.pdf`);
