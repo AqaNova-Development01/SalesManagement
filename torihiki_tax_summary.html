@@ -4,10 +4,6 @@
   <meta charset="UTF-8">
   <title>取引先別 税区分別集計</title>
 
-  <!-- jsPDF（必要なら PDF 対応用） -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
-
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -77,6 +73,13 @@
         return;
       }
 
+      // ★ 集計した年月を保存
+      window._lastSummaryYear = year;
+      window._lastSummaryMonth = month;
+
+      // ★ 画面に表示
+      document.getElementById("summary_ym").innerText = `${year}年${month}月`;
+
       renderTable(data || []);
     }
 
@@ -101,9 +104,28 @@
     }
 
     // ----------------------------
-    // CSV 出力（BOM付き UTF-8、カンマ無し）
+    // 共通：集計済み年月チェック
+    // ----------------------------
+    function checkSummaryUpToDate() {
+      const year = Number(document.getElementById("year").value);
+      const month = Number(document.getElementById("month").value);
+
+      if (
+        window._lastSummaryYear !== year ||
+        window._lastSummaryMonth !== month
+      ) {
+        alert("集計結果が最新ではありません。もう一度『集計』を押してください。");
+        return false;
+      }
+      return true;
+    }
+
+    // ----------------------------
+    // CSV 出力
     // ----------------------------
     function exportCSV() {
+      if (!checkSummaryUpToDate()) return;
+
       const rows = [...document.querySelectorAll("#list tr")];
       let csv = "\uFEFF取引先ID,取引先名,税区分(%),税込額,総合計\n";
 
@@ -171,7 +193,10 @@
 
   <button onclick="search()">集計</button>
 
-  <h3>集計結果</h3>
+  <h3>
+    集計結果
+    <span id="summary_ym" style="margin-left:10px;color:#555;"></span>
+  </h3>
 
   <table id="result_table">
     <thead>
