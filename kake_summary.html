@@ -63,6 +63,10 @@
     // 集計 RPC 呼び出し
     // ----------------------------
     async function search() {
+      window._lastSummaryYear = year;
+      window._lastSummaryMonth = month;
+      document.getElementById("summary_ym").innerText = `${year}年${month}月`;
+
       const year = Number(document.getElementById("year").value);
       const month = Number(document.getElementById("month").value);
 
@@ -132,6 +136,10 @@
     // CSV 出力（BOM付き UTF-8、カンマ無し）
     // ----------------------------
     function exportCSV() {
+      if (year != window._lastSummaryYear || month != window._lastSummaryMonth) {
+        alert("集計結果が最新ではありません。もう一度『集計』を押してください。");
+        return;
+      }
       const rows = [...document.querySelectorAll("#list tr")];
       let csv = "\uFEFF取引先ID,取引先名,期首残高,掛金(税抜),税額,入金/支払,期末残高\n";
 
@@ -160,6 +168,10 @@
     // PDF 出力（日本語フォント fetch）
     // ----------------------------
     async function exportPDF() {
+      if (year != window._lastSummaryYear || month != window._lastSummaryMonth) {
+        alert("集計結果が最新ではありません。もう一度『集計』を押してください。");
+        return;
+      }
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
@@ -241,7 +253,9 @@
 
   <button onclick="search()">集計</button>
 
-  <h3>集計結果</h3>
+<h3>
+  集計結果 <span id="summary_ym" style="margin-left:10px;color:#555;"></span>
+</h3>
 
   <table id="result_table">
     <thead>
