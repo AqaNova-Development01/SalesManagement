@@ -8,9 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 
-  <!-- ★ 日本語フォント（Sazanami Mincho） -->
-  <script src="https://unpkg.com/jspdf-font-sazanami"></script>
-
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -132,14 +129,16 @@
     }
 
     // ----------------------------
-    // CSV 出力（BOM付き UTF-8）
+    // CSV 出力（BOM付き UTF-8、カンマ無し）
     // ----------------------------
     function exportCSV() {
       const rows = [...document.querySelectorAll("#list tr")];
       let csv = "\uFEFF取引先ID,取引先名,期首残高,掛金(税抜),税額,入金/支払,期末残高\n";
 
       rows.forEach(tr => {
-        const cols = [...tr.children].map(td => td.textContent);
+        const cols = [...tr.children].map(td =>
+          td.textContent.replace(/,/g, "")
+        );
         csv += cols.join(",") + "\n";
       });
 
@@ -158,16 +157,29 @@
     }
 
     // ----------------------------
-    // PDF 出力（日本語フォント対応）
+    // PDF 出力（日本語フォント fetch）
     // ----------------------------
-    function exportPDF() {
+    async function exportPDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // ★ 日本語フォントを登録
-      doc.addFileToVFS("SazanamiMincho-Regular.ttf", SazanamiMincho_Regular);
-      doc.addFont("SazanamiMincho-Regular.ttf", "Sazanami", "normal");
-      doc.setFont("Sazanami");
+      // ★ フォントを fetch で読み込む
+      const fontUrl = "fonts/NotoSansJP-Regular.ttf";
+      const fontData = await fetch(fontUrl)
+        .then(r => r.arrayBuffer())
+        .then(buf =>
+          btoa(
+            new Uint8Array(buf).reduce(
+              (s, b) => s + String.fromCharCode(b),
+              ""
+            )
+          )
+        );
+
+      // ★ jsPDF にフォント登録
+      doc.addFileToVFS("NotoSansJP-Regular.ttf", fontData);
+      doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+      doc.setFont("NotoSansJP");
 
       const year = document.getElementById("year").value;
       const month = document.getElementById("month").value.padStart(2, "0");
@@ -177,9 +189,9 @@
 
       doc.autoTable({
         html: "#result_table",
-        styles: { font: "Sazanami" },
-        headStyles: { font: "Sazanami" },
-        bodyStyles: { font: "Sazanami" }
+        styles: { font: "NotoSansJP" },
+        headStyles: { font: "NotoSansJP" },
+        bodyStyles: { font: "NotoSansJP" }
       });
 
       doc.save(`${kubunName}_${year}_${month}.pdf`);
