@@ -8,6 +8,9 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 
+  <!-- ★ 日本語フォント（NotoSansJP） -->
+  <script src="https://cdn.jsdelivr.net/gh/yuki-kimoto/jspdf-fonts/NotoSansJP-Regular.js"></script>
+
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -155,18 +158,29 @@
     }
 
     // ----------------------------
-    // PDF 出力
+    // PDF 出力（日本語フォント対応）
     // ----------------------------
     function exportPDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
+
+      // ★ 日本語フォントを登録
+      doc.addFileToVFS("NotoSansJP-Regular.ttf", NotoSansJP_Regular);
+      doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+      doc.setFont("NotoSansJP");
 
       const year = document.getElementById("year").value;
       const month = document.getElementById("month").value.padStart(2, "0");
       const kubunName = kubun === "UR" ? "売掛" : "買掛";
 
       doc.text(`${kubunName}集計 ${year}年${month}月`, 14, 10);
-      doc.autoTable({ html: "#result_table" });
+
+      doc.autoTable({
+        html: "#result_table",
+        styles: { font: "NotoSansJP" },
+        headStyles: { font: "NotoSansJP" },
+        bodyStyles: { font: "NotoSansJP" }
+      });
 
       doc.save(`${kubunName}_${year}_${month}.pdf`);
     }
