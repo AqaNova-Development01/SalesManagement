@@ -12,31 +12,66 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ----------------------------
+    // MF連携状態の取得（Edge Functions）
+    // ----------------------------
+    async function loadMFStatus() {
+      try {
+        const res = await fetch("/functions/v1/mf_status");
+        const data = await res.json();
+
+        const btn = document.getElementById("btn-mf-connect");
+        const status = document.getElementById("mf-status");
+
+        if (data.connected) {
+          btn.disabled = true;
+          status.textContent = `連携済み（${data.updated_at}）`;
+        } else {
+          btn.disabled = false;
+          status.textContent = "未連携";
+        }
+      } catch (e) {
+        console.error("MF連携状態取得エラー:", e);
+      }
+    }
+
+    // ----------------------------
     // ログイン済みチェック
     // ----------------------------
     async function checkLogin() {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
         window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
+        return;
       }
-    const user = data.session.user;
 
-    // ★ public.users から role を取得
-    const { data: userInfo } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+      const user = data.session.user;
 
-    const role = userInfo?.role || "user";
+      // ★ public.users から role を取得
+      const { data: userInfo } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
-    // ★ admin 以外は非表示
-    if (role !== "admin") {
-      document.getElementById("master-section").style.display = "none";
-      document.getElementById("user-section").style.display = "none";
-    } else {
-      btnUsercreate.disabled = true;
+      const role = userInfo?.role || "user";
+
+      // ★ admin 以外は非表示
+      if (role !== "admin") {
+        document.getElementById("master-section").style.display = "none";
+        document.getElementById("user-section").style.display = "none";
+      } else {
+        btnUsercreate.disabled = true;
+      }
+
+      // ★ MF連携状態を読み込み
+      loadMFStatus();
     }
+
+    // ----------------------------
+    // MFクラウドと連携する（OAuth2 認可URLへ遷移）
+    // ----------------------------
+    function connectMF() {
+      window.location.href = "/functions/v1/mf_authorize";
     }
 
     // ----------------------------
@@ -48,6 +83,8 @@
     }
 
     window.logout = logout;
+    window.connectMF = connectMF;
+
     checkLogin();
   </script>
 
@@ -71,6 +108,12 @@
       padding: 15px;
       margin: 10px 0;
       font-size: 16px;
+    }
+    .mf-status {
+      font-size: 14px;
+      color: #555;
+      margin-top: -5px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -117,17 +160,21 @@
   <button onclick="location.href='---koujityu---.html'">納品 CSV</button>
 
   <!-- マスタ管理 -->
-<div id="master-section">
-  <h3>マスタ管理</h3>
-  <button onclick="location.href='torihikisaki-list.html'">取引先マスター</button>
-  <button onclick="location.href='hinmoku-list.html'">品目マスター</button>
-</div>
+  <div id="master-section">
+    <h3>マスタ管理</h3>
+    <button onclick="location.href='torihikisaki-list.html'">取引先マスター</button>
+    <button onclick="location.href='hinmoku-list.html'">品目マスター</button>
+
+    <!-- ★ MFクラウド連携 -->
+    <div class="mf-status" id="mf-status">状態：確認中...</div>
+    <button id="btn-mf-connect" onclick="connectMF()">MFクラウド連携</button>
+  </div>
 
   <!-- ユーザー設定 -->
-<div id="user-section">
-  <h3>ユーザー</h3>
-  <button id="btnUsercreate" onclick="location.href='admin-create-user.html'">ユーザー作成</button>
-</div>
+  <div id="user-section">
+    <h3>ユーザー</h3>
+    <button id="btnUsercreate" onclick="location.href='admin-create-user.html'">ユーザー作成</button>
+  </div>
 
   <h3>ログアウト</h3>
   <button onclick="logout()">ログアウト</button>
