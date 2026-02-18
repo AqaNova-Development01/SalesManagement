@@ -11,6 +11,9 @@
     const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // ★ 連携状態フラグ
+    let mfConnected = false;
+
     // ----------------------------
     // MF連携状態の取得（Edge Functions）
     // ----------------------------
@@ -23,9 +26,11 @@
         const status = document.getElementById("mf-status");
 
         if (data.connected) {
+          mfConnected = true;
           btn.disabled = true;
           status.textContent = `連携済み（${data.updated_at}）`;
         } else {
+          mfConnected = false;
           btn.disabled = false;
           status.textContent = "未連携";
         }
@@ -68,9 +73,13 @@
     }
 
     // ----------------------------
-    // MFクラウドと連携する（OAuth2 認可URLへ遷移）
+    // MFクラウドと連携する（未連携のときだけ）
     // ----------------------------
     function connectMF() {
+      if (mfConnected) {
+        alert("すでにMFクラウドと連携済みです。");
+        return;
+      }
       window.location.href = "/functions/v1/mf_authorize";
     }
 
