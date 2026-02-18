@@ -19,7 +19,7 @@
     // ----------------------------
     async function loadMFStatus() {
       try {
-        const res = await fetch("https://omzcbfjtwygvygxsiov.supabase.co/functions/v1/mf_status");
+        const res = await fetch("https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_status");
         const data = await res.json();
 
         const btn = document.getElementById("btn-mf-connect");
@@ -80,7 +80,7 @@
         alert("すでにMFクラウドと連携済みです。");
         return;
       }
-      window.location.href = "https://omzcbfjtwygvygxsiov.supabase.co/functions/v1/mf_authorize";
+      window.location.href = "https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_authorize";
     }
 
     // ----------------------------
