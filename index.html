@@ -23,8 +23,7 @@
           .from("mf_tokens")
           .select("updated_at")
           .eq("id", 1)
-          .single();
-
+          .maybeSingle();   // ← ここが重要！
     
         const btn = document.getElementById("btn-mf-connect");
         const status = document.getElementById("mf-status");
