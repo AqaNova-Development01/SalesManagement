@@ -79,7 +79,7 @@
       }
 
       // ★ MF連携状態を読み込み
-      loadMFStatus();
+      await loadMFStatus();
     }
 
     // ----------------------------
@@ -104,7 +104,7 @@
     window.logout = logout;
     window.connectMF = connectMF;
 
-    checkLogin();
+    await checkLogin();
   </script>
 
   <style>
