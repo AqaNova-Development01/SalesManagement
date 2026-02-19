@@ -22,7 +22,9 @@
         const { data, error } = await supabase
           .from("mf_tokens")
           .select("updated_at")
-          .limit(1);
+          .eq("id", 1)
+          .single();
+
     
         const btn = document.getElementById("btn-mf-connect");
         const status = document.getElementById("mf-status");
@@ -33,10 +35,10 @@
           return;
         }
     
-        if (data && data.length > 0) {
+        if (data) {
           mfConnected = true;
           btn.disabled = true;
-          status.textContent = `連携済み（${data[0].updated_at}）`;
+          status.textContent = `連携済み（${data.updated_at}）`;
         } else {
           mfConnected = false;
           btn.disabled = false;
