@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>取引先一覧（MF連携対応）</title>
+  <title>取引先一覧（MF連携＋ログ付き）</title>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -16,21 +16,30 @@
     const from = params.get("from");
 
     // ----------------------------
-    // ログインチェック
+    // ログインチェック（ログ付き）
     // ----------------------------
     async function checkLogin() {
-      const { data } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
+
+      console.log("🔐 getSession data:", data);
+      console.log("🔐 getSession error:", error);
+
       if (!data.session) {
+        console.log("❌ セッションなし → login.html へ遷移");
         window.location.href = "login.html";
         return false;
       }
+
+      console.log("✅ ログイン済み:", data.session.user.id);
       return true;
     }
 
     // ----------------------------
-    // MF同期（1件）
+    // MF同期（1件・ログ付き）
     // ----------------------------
     async function syncPartner(id) {
+      console.log("🔄 同期開始:", id);
+
       const btn = document.getElementById(`sync-${id}`);
       btn.disabled = true;
       btn.textContent = "同期中...";
@@ -44,10 +53,15 @@
         }
       );
 
+      console.log("📡 EdgeFunctionレスポンス:", res);
+
       if (res.ok) {
+        console.log("✅ 同期成功");
         alert("MF連携が完了しました");
         loadList();
       } else {
+        const text = await res.text();
+        console.log("❌ 同期失敗:", text);
         alert("同期に失敗しました");
         btn.disabled = false;
         btn.textContent = "同期";
@@ -55,7 +69,7 @@
     }
 
     // ----------------------------
-    // 一覧読み込み
+    // 一覧読み込み（ログ付き）
     // ----------------------------
     async function loadList() {
       const filter = document.getElementById("filter").value.trim();
@@ -71,7 +85,12 @@
         );
       }
 
+      console.log("▶️ 実行クエリ:", query);
+
       let { data, error } = await query;
+
+      console.log("📥 SELECT data:", data);
+      console.log("⚠️ SELECT error:", error);
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
@@ -125,7 +144,10 @@
     // 初期処理
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
+      console.log("🚀 画面ロード開始");
+
       if (!(await checkLogin())) return;
+
       loadList();
     });
 
@@ -133,6 +155,8 @@
     // 行選択
     // ----------------------------
     function selectRow(id) {
+      console.log("➡️ 行選択:", id);
+
       if (from) {
         window.location.href = `${from}.html?torihikisaki_id=${id}`;
       } else {
@@ -140,10 +164,9 @@
       }
     }
 
-    // ----------------------------
-    // 新規作成 → 呼び出し元に応じて遷移
-    // ----------------------------
     function goNew() {
+      console.log("🆕 新規作成へ");
+
       if (from) {
         window.location.href = `${from}.html`;
       } else {
@@ -167,7 +190,7 @@
 
 <body>
 
-  <h2>取引先一覧（MF連携対応）</h2>
+  <h2>取引先一覧（MF連携＋ログ付き）</h2>
 
   <input id="filter" type="text" placeholder="コード / 会社名 / カナ / 部署 / 担当者">
   <button onclick="loadList()">検索</button>
