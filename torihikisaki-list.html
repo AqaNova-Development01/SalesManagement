@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>取引先一覧（MF連携＋ログ付き）</title>
+  <title>取引先一覧（MF連携対応）</title>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -16,46 +16,27 @@
     const from = params.get("from");
 
     // ----------------------------
-    // 画面ロード直後にログを出す（最重要）
-    // ----------------------------
-    console.log("🚀 画面ロード開始（ログインチェック前）");
-
-    // ----------------------------
-    // ログインチェック（ログ付き）
+    // ログインチェック
     // ----------------------------
     async function checkLogin() {
-      console.log("🔐 checkLogin() 開始");
-
-      const { data, error } = await supabase.auth.getSession();
-
-      console.log("🔐 getSession data:", data);
-      console.log("🔐 getSession error:", error);
-
-if (!data.session) {
-  console.log("❌ セッションなし（遷移は一時停止中）");
-
-  alert("ログインセッションがありません。\n遷移は一時停止しています。\nConsole のログを確認してください。");
-
-  // ★ 遷移しない（デバッグ用）
-  return false;
-}
-
-      console.log("✅ ログイン済み:", data.session.user.id);
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
       return true;
     }
 
     // ----------------------------
-    // MF同期（1件・ログ付き）
+    // MF同期（1件）
     // ----------------------------
     async function syncPartner(id) {
-      console.log("🔄 同期開始:", id);
-
       const btn = document.getElementById(`sync-${id}`);
       btn.disabled = true;
       btn.textContent = "同期中...";
 
       const res = await fetch(
-        "https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_sync_partner",
+        "https://omzcbfjtwygvyvgxsio.supabase.co/functions/v1/mf_sync_partner",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -63,15 +44,10 @@ if (!data.session) {
         }
       );
 
-      console.log("📡 EdgeFunctionレスポンス:", res);
-
       if (res.ok) {
-        console.log("✅ 同期成功");
         alert("MF連携が完了しました");
         loadList();
       } else {
-        const text = await res.text();
-        console.log("❌ 同期失敗:", text);
         alert("同期に失敗しました");
         btn.disabled = false;
         btn.textContent = "同期";
@@ -79,11 +55,9 @@ if (!data.session) {
     }
 
     // ----------------------------
-    // 一覧読み込み（ログ付き）
+    // 一覧読み込み
     // ----------------------------
     async function loadList() {
-      console.log("📄 loadList() 開始");
-
       const filter = document.getElementById("filter").value.trim();
 
       let query = supabase
@@ -97,12 +71,7 @@ if (!data.session) {
         );
       }
 
-      console.log("▶️ 実行クエリ:", query);
-
       let { data, error } = await query;
-
-      console.log("📥 SELECT data:", data);
-      console.log("⚠️ SELECT error:", error);
 
       if (error) {
         alert("一覧取得エラー: " + error.message);
@@ -153,16 +122,10 @@ if (!data.session) {
     }
 
     // ----------------------------
-    // 初期処理（ログ付き）
+    // 初期処理
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
-      console.log("🔥 DOMContentLoaded 発火");
-
-      const ok = await checkLogin();
-      console.log("🔍 checkLogin 結果:", ok);
-
-      if (!ok) return;
-
+      if (!(await checkLogin())) return;
       loadList();
     });
 
@@ -170,8 +133,6 @@ if (!data.session) {
     // 行選択
     // ----------------------------
     function selectRow(id) {
-      console.log("➡️ 行選択:", id);
-
       if (from) {
         window.location.href = `${from}.html?torihikisaki_id=${id}`;
       } else {
@@ -179,9 +140,10 @@ if (!data.session) {
       }
     }
 
+    // ----------------------------
+    // 新規作成 → 呼び出し元に応じて遷移
+    // ----------------------------
     function goNew() {
-      console.log("🆕 新規作成へ");
-
       if (from) {
         window.location.href = `${from}.html`;
       } else {
@@ -205,7 +167,7 @@ if (!data.session) {
 
 <body>
 
-  <h2>取引先一覧（MF連携＋ログ付き）</h2>
+  <h2>取引先一覧（MF連携対応）</h2>
 
   <input id="filter" type="text" placeholder="コード / 会社名 / カナ / 部署 / 担当者">
   <button onclick="loadList()">検索</button>
