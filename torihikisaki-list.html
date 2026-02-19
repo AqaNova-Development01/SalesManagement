@@ -8,7 +8,7 @@
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
     const supabase = createClient(
-      "https://omzcbfjtwygvyvgxsio.supabase.co",
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
       "sb-publishable-key"
     );
 
@@ -16,19 +16,29 @@
     const from = params.get("from");
 
     // ----------------------------
+    // 画面ロード直後にログを出す（最重要）
+    // ----------------------------
+    console.log("🚀 画面ロード開始（ログインチェック前）");
+
+    // ----------------------------
     // ログインチェック（ログ付き）
     // ----------------------------
     async function checkLogin() {
+      console.log("🔐 checkLogin() 開始");
+
       const { data, error } = await supabase.auth.getSession();
 
       console.log("🔐 getSession data:", data);
       console.log("🔐 getSession error:", error);
 
-      if (!data.session) {
-        console.log("❌ セッションなし → login.html へ遷移");
-        window.location.href = "login.html";
-        return false;
-      }
+if (!data.session) {
+  console.log("❌ セッションなし（遷移は一時停止中）");
+
+  alert("ログインセッションがありません。\n遷移は一時停止しています。\nConsole のログを確認してください。");
+
+  // ★ 遷移しない（デバッグ用）
+  return false;
+}
 
       console.log("✅ ログイン済み:", data.session.user.id);
       return true;
@@ -45,7 +55,7 @@
       btn.textContent = "同期中...";
 
       const res = await fetch(
-        "https://omzcbfjtwygvyvgxsio.supabase.co/functions/v1/mf_sync_partner",
+        "https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_sync_partner",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -72,6 +82,8 @@
     // 一覧読み込み（ログ付き）
     // ----------------------------
     async function loadList() {
+      console.log("📄 loadList() 開始");
+
       const filter = document.getElementById("filter").value.trim();
 
       let query = supabase
@@ -141,12 +153,15 @@
     }
 
     // ----------------------------
-    // 初期処理
+    // 初期処理（ログ付き）
     // ----------------------------
     window.addEventListener("DOMContentLoaded", async () => {
-      console.log("🚀 画面ロード開始");
+      console.log("🔥 DOMContentLoaded 発火");
 
-      if (!(await checkLogin())) return;
+      const ok = await checkLogin();
+      console.log("🔍 checkLogin 結果:", ok);
+
+      if (!ok) return;
 
       loadList();
     });
