@@ -44,9 +44,7 @@
         .from("torihikisaki")
         .select("id, name")
         .order("id");
-      if (kubun === "KI") {
-        query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
-      }
+      query = query.not("id", "eq", "TK00000");  // ★ 自社を除外
       const { data } = await query;
 
 
@@ -310,12 +308,7 @@
       document.getElementById("title_kubun2").innerText =
         (kubun === "UR") ? "◆◆◆ 売上情報 ◆◆◆" : "◆◆◆ 仕入情報 ◆◆◆";
 
-      if (kubun === "UR") {
-        document.getElementById("torihikisaki_select").value = "TK00000";
-        document.getElementById("torihikisaki_select").disabled = true;
-        document.getElementById("torihikisaki_id").value = "TK00000";
-        loadTorihikisakiName("TK00000");
-      } else if (kubun === "KI") {
+      if (kubun === "KI") {
         document.getElementById("btnMitumoriDetailList").innerText = "発注明細一覧へ";
         //document.getElementById("btnMitumoriDetailList").style.display = "none";
       }
