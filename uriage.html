@@ -149,11 +149,12 @@
     // ----------------------------
     // 採番
     // ----------------------------
-    async function generateCode() {
+    async function generateCode() {     
+      
       const prefix = (kubun === "UR") ? "UR" : "KI";
 
       const { data, error } = await supabase.rpc("get_next_document_code", {
-        prefix: prefix
+        prefix: prefix,p_date: document.getElementById("keijo_date").value
       });
 
       if (error) {
