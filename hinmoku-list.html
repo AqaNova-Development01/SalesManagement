@@ -59,10 +59,26 @@
     // 取引先名 自動取得
     // ----------------------------
     async function loadTorihikisakiName() {
+
+    if (kubun === "UR") {
+      // ★ UR のときは常に自社を表示
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("name")
+        .eq("id", "TK00000")
+        .single();
+  
+      document.getElementById("torihikisaki_name").value = data?.name || "";
+      return;
+    }
+
+  // ★ UR 以外は従来通り
       if (!torihikisaki_id) {
         document.getElementById("torihikisaki_name").value = "";
         return;
       }
+
+
 
       const { data } = await supabase
         .from("torihikisaki")
@@ -106,12 +122,19 @@
         .select("*, torihikisaki:torihikisaki_id(name)")
         .order("name");
 
-      if (selected_torihikisaki_id) {
-        query = query.eq("torihikisaki_id", selected_torihikisaki_id);
+      if (kubun === "UR") {
+        // ★ UR のときは品目を自社だけに絞る
+        query = query.eq("torihikisaki_id", "TK00000");
+      } else {
+        // ★ UR 以外は従来通り
+        if (selected_torihikisaki_id) {
+          query = query.eq("torihikisaki_id", selected_torihikisaki_id);
+        }
+        if (kubun === "KI") {
+          query = query.not("torihikisaki_id", "eq", "TK00000");
+        }
       }
-      if (kubun === "KI") {
-        query = query.not("torihikisaki_id", "eq", "TK00000");  // ★ 自社を除外
-      }
+
 
       if (filter) {
         query = query.or(`id.ilike.%${filter}%,name.ilike.%${filter}%`);
