@@ -390,11 +390,6 @@
       document.getElementById("title_kubun2").innerText =
         (kubun === "UR") ? "◆◆◆ 売上情報 ◆◆◆" : "◆◆◆ 仕入情報 ◆◆◆";
 
-      if (kubun === "KI") {
-        document.getElementById("btnMitumoriDetailList").innerText = "発注明細一覧へ";
-        //document.getElementById("btnMitumoriDetailList").style.display = "none";
-      }
-
       if (selectedId) {
         await loadData(selectedId);
       }
@@ -483,7 +478,6 @@
 
   <h3>品目</h3>
   <button onclick="openHinmokuList()">品目一覧へ</button>
-  <button id="btnMitumoriDetailList" onclick="openMitumoriDetailList()">見積明細一覧へ</button>
 
   <label>品目ID</label>
   <input id="hinmoku_id" type="text" readonly>
