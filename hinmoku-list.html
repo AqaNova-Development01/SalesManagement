@@ -179,12 +179,16 @@
     // ----------------------------
     window.selectRow = function(id, tid) {
 
-      // ★ 売上 or 仕入から来た場合（kubun が必要）
+
+      // ★ 売上（uriage）から来た場合：元の torihikisaki_id（tid）を返す
       if (from === "uriage") {
         window.location.href =
-          `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=selected_torihikisaki_id&from=hinmoku`;
+          `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=${torihikisaki_id}&from=hinmoku`;
         return;
-      }else if (from === "shiire") {
+      }
+    
+      // ★ 仕入（shiire）から来た場合：従来通り tid を返す
+      if (from === "shiire") {
         window.location.href =
           `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
         return;
