@@ -139,6 +139,8 @@
 
       document.getElementById("mitsumori_no").value = data.mitsumori_no || "";
       document.getElementById("nouhin_no").value = data.nouhin_no || "";
+      // 選択肢を作ってから値をセットする
+      setInvoiceCheckOptions();
       document.getElementById("invoice_check").value = String(data.invoice_check ?? 0);
       document.getElementById("memo").value = data.memo || "";
 
@@ -317,14 +319,50 @@
       location.href = `list.html?kubun=${kubun}&torihikisaki_id=${tid}`;
     };
 
-    // --- 画面制御関数を追加し、DOMContentLoaded で呼ぶ ---
+    // --- invoice_check の選択肢を kubun に応じて切り替える ---
+    function setInvoiceCheckOptions() {
+      const sel = document.getElementById("invoice_check");
+      if (!sel) return;
+    
+      // 既存の選択肢をクリア
+      sel.innerHTML = "";
+    
+      if (kubun === "UR") {
+        // 売上：未請求 / 請求済（編集不可にするのは別関数で制御）
+        const opt0 = document.createElement("option");
+        opt0.value = "0";
+        opt0.textContent = "未請求";
+        const opt1 = document.createElement("option");
+        opt1.value = "1";
+        opt1.textContent = "請求済";
+        sel.appendChild(opt0);
+        sel.appendChild(opt1);
+      } else {
+        // 仕入：未確認 / 確認済（画面で編集可）
+        const opt0 = document.createElement("option");
+        opt0.value = "0";
+        opt0.textContent = "未確認";
+        const opt1 = document.createElement("option");
+        opt1.value = "1";
+        opt1.textContent = "確認済";
+        sel.appendChild(opt0);
+        sel.appendChild(opt1);
+      }
+    }
+    
+    // --- 画面編集可否と選択肢初期化をまとめて行う ---
     function setInvoiceCheckEditable() {
       const sel = document.getElementById("invoice_check");
       if (!sel) return;
+    
+      // 選択肢を kubun に合わせて作る
+      setInvoiceCheckOptions();
+    
+      // 編集可否
       if (kubun === "UR") {
-        sel.disabled = true;   // 売上は画面で編集不可
+        sel.disabled = true;   // 売上は通常編集不可（請求処理で立てる）
       } else {
-        sel.disabled = false;  // 仕入は編集可
+        sel.disabled = false;  // 仕入は手動で確認フラグを操作可能
       }
     }
 
@@ -488,8 +526,7 @@
 
   <label>請求状態</label>
   <select id="invoice_check">
-    <option value="0">未請求</option>
-    <option value="1">請求済</option>
+    <!-- JS が動的に option を作成します -->
   </select>
   <label>備考</label>
   <textarea id="memo"></textarea>
