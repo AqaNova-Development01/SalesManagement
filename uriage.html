@@ -137,6 +137,9 @@
       document.getElementById("amount").value = data.amount;
       document.getElementById("tax_rate").value = data.tax_rate;
 
+      document.getElementById("mitsumori_no").value = data.mitsumori_no || "";
+      document.getElementById("nouhin_no").value = data.nouhin_no || "";
+      document.getElementById("invoice_check").value = String(data.invoice_check ?? 0);
       document.getElementById("memo").value = data.memo || "";
 
       document.getElementById("torihikisaki_select").value = data.torihikisaki_id;
@@ -150,6 +153,11 @@
     // 採番
     // ----------------------------
     async function generateCode() {     
+      const keijo = document.getElementById("keijo_date").value;
+      if (!keijo) {
+        alert("計上日は必須です。入力してください。");
+        return null;
+      }
       
       const prefix = (kubun === "UR") ? "UR" : "KI";
 
@@ -188,6 +196,11 @@
     // 登録
     // ----------------------------
     async function registerData() {
+      // フロント側の二重チェック（generateCode でもチェック済み）
+      if (!document.getElementById("keijo_date").value) {
+        alert("計上日は必須です。");
+        return;
+      }
       const code = await generateCode();
       if (!code) return;
 
@@ -198,6 +211,8 @@
       data.id = code;
       data.created_by = currentUser.id;
 
+      // 売上は画面で編集不可なので登録時は必ず未請求(0)にする
+      if (kubun === "UR") data.invoice_check = 0;
       const { error } = await supabase.from(table).insert(data);
 
       if (error) alert("登録エラー: " + error.message);
@@ -214,6 +229,11 @@
       const id = document.getElementById("id").value;
       //const table = (kubun === "UR") ? "uriage" : "shiire";
       const table = "kakekin";
+      // 計上日は必須
+      if (!document.getElementById("keijo_date").value) {
+        alert("計上日は必須です。");
+        return;
+      }
 
       const data = collectForm();
       data.updated_by = currentUser.id;
@@ -274,6 +294,10 @@
         amount: document.getElementById("amount").value,
         tax_rate: document.getElementById("tax_rate").value,
 
+        mitsumori_no: document.getElementById("mitsumori_no").value,
+        nouhin_no: document.getElementById("nouhin_no").value,
+        invoice_check: Number(document.getElementById("invoice_check").value || 0),
+
         memo: document.getElementById("memo").value
       };
     }
@@ -293,6 +317,17 @@
       location.href = `list.html?kubun=${kubun}&torihikisaki_id=${tid}`;
     };
 
+    // --- 画面制御関数を追加し、DOMContentLoaded で呼ぶ ---
+    function setInvoiceCheckEditable() {
+      const sel = document.getElementById("invoice_check");
+      if (!sel) return;
+      if (kubun === "UR") {
+        sel.disabled = true;   // 売上は画面で編集不可
+      } else {
+        sel.disabled = false;  // 仕入は編集可
+      }
+    }
+
     // ----------------------------
     // 初期処理
     // ----------------------------
@@ -302,6 +337,14 @@
 
       await loadUser();
       await loadTorihikisakiSelect();
+      // 初期の invoice_check 編集可否設定
+      setInvoiceCheckEditable();
+      if (selectedId) {
+        await loadData(selectedId);
+        setInvoiceCheckEditable();
+      }
+
+
 
       document.getElementById("title_kubun").innerText =
         (kubun === "UR") ? "売上入力" : "仕入入力";
@@ -436,7 +479,19 @@
   <label>計上日</label>
   <input id="keijo_date" type="date">
 
-  <h3>◆◆◆ 備考 ◆◆◆</h3>
+  <h3>◆◆◆ その他 ◆◆◆</h3>
+
+  <label>見積番号</label>
+  <input id="mitsumori_no" type="text">
+  <label>納品番号</label>
+  <input id="nouhin_no" type="text">
+
+  <label>請求状態</label>
+  <select id="invoice_check">
+    <option value="0">未請求</option>
+    <option value="1">請求済</option>
+  </select>
+  <label>備考</label>
   <textarea id="memo"></textarea>
 
   <button id="btnRegister" onclick="registerData()">登録</button>
