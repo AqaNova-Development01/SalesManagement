@@ -180,7 +180,11 @@
     window.selectRow = function(id, tid) {
 
       // ★ 売上 or 仕入から来た場合（kubun が必要）
-      if (from === "uriage" || from === "shiire") {
+      if (from === "uriage") {
+        window.location.href =
+          `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=$selected_torihikisaki_id&from=hinmoku`;
+        return;
+      }else if (from === "shiire") {
         window.location.href =
           `${from}.html?kubun=${kubun}&hinmoku_id=${id}&torihikisaki_id=${tid}&from=hinmoku`;
         return;
