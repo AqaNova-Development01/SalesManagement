@@ -141,7 +141,8 @@
       document.getElementById("nouhin_no").value = data.nouhin_no || "";
       // 選択肢を作ってから値をセットする
       setInvoiceCheckOptions();
-      document.getElementById("invoice_check").value = String(data.invoice_check ?? 0);
+      const inv = Number(data.invoice_check ?? 0);
+      document.getElementById("invoice_check").value = (inv >= 1 ? "1" : "0");
       document.getElementById("memo").value = data.memo || "";
 
       document.getElementById("torihikisaki_select").value = data.torihikisaki_id;
