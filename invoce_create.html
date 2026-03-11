@@ -216,52 +216,48 @@
     // 請求作成（Edge Function 呼び出し）
     // ----------------------------
     async function createInvoice() {
-      if (!confirm("選択した内容で請求データを作成します。よろしいですか？")) return;
-
+      if (!confirm("選択した内容で請求書を作成します。よろしいですか？")) return;
+    
+      // ログイン済みチェックとアクセストークン取得
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        alert("セッションが見つかりません。再ログインしてください。");
+        return;
+      }
+    
       const doc_date = document.getElementById("doc_date").value;
       const start = document.getElementById("start_date").value;
       const end   = document.getElementById("end_date").value;
-
-      // 取引先ごとに selected_kakekin_ids を作成
+    
       const groups = [];
-
       for (const tid in previewData) {
         const selectedIds = previewData[tid].rows
           .filter(r => r.selected !== false)
           .map(r => r.kakekin_id);
-
         if (selectedIds.length > 0) {
-          groups.push({
-            torihikisaki_id: tid,
-            selected_kakekin_ids: selectedIds
-          });
+          groups.push({ torihikisaki_id: tid, selected_kakekin_ids: selectedIds });
         }
       }
-
-      const payload = {
-        doc_date,
-        period_start: start,
-        period_end: end,
-        groups
-      };
-
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/invoice_create`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        }
-      );
-
+    
+      const payload = { doc_date, period_start: start, period_end: end, groups };
+    
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/invoice_create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+    
       const result = await res.json();
-
       if (!res.ok) {
         alert("作成エラー: " + JSON.stringify(result));
         return;
       }
-
-      alert("請求データ作成が完了しました");
+    
+      alert("請求書作成が完了しました");
     }
 
     window.loadPreview = loadPreview;
@@ -314,6 +310,7 @@
   <label>発行日: <input type="date" id="doc_date" value=""></label>
   <button onclick="createInvoice()">請求データ作成</button>
 </div>
+  <button onclick="location.href='index.html'">メニューへ</button>
 
 </body>
 </html>
