@@ -227,46 +227,30 @@
     async function createInvoice() {
       if (!confirm("選択した内容で請求書を作成します。よろしいですか？")) return;
     
-      // ログイン済みチェックとアクセストークン取得
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        alert("セッションが見つかりません。再ログインしてください。");
-        return;
-      }
+      const payload = {
+        doc_date: document.getElementById("doc_date").value,
+        period_start: document.getElementById("start_date").value,
+        period_end: document.getElementById("end_date").value,
+        groups: Object.entries(previewData).map(([tid, g]) => ({
+          torihikisaki_id: tid,
+          selected_kakekin_ids: g.rows
+            .filter(r => r.selected !== false)
+            .map(r => r.kakekin_id)
+        }))
+      };
     
-      const doc_date = document.getElementById("doc_date").value;
-      const start = document.getElementById("start_date").value;
-      const end   = document.getElementById("end_date").value;
-    
-      const groups = [];
-      for (const tid in previewData) {
-        const selectedIds = previewData[tid].rows
-          .filter(r => r.selected !== false)
-          .map(r => r.kakekin_id);
-        if (selectedIds.length > 0) {
-          groups.push({ torihikisaki_id: tid, selected_kakekin_ids: selectedIds });
-        }
-      }
-    
-      const payload = { doc_date, period_start: start, period_end: end, groups };
-    
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/invoice_create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`
-        },
-        body: JSON.stringify(payload)
+      const { data, error } = await supabase.functions.invoke("invoice_create", {
+        body: payload
       });
     
-      const result = await res.json();
-      if (!res.ok) {
-        alert("作成エラー: " + JSON.stringify(result));
+      if (error) {
+        alert("作成エラー: " + JSON.stringify(error));
+        console.error(error);
         return;
       }
     
       alert("請求書作成が完了しました");
+      console.log(data);
     }
 
     window.loadPreview = loadPreview;
