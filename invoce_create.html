@@ -235,7 +235,7 @@
           torihikisaki_id: tid,
           selected_kakekin_ids: g.rows
             .filter(r => r.selected !== false)
-            .map(r => r.id)
+            .map(r => r.kakekin_id )
         }))
       };
     
@@ -307,3 +307,4 @@
 
 </body>
 </html>
+
