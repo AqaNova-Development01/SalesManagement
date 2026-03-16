@@ -228,21 +228,22 @@
       if (!confirm("選択した内容で請求データを作成します。よろしいですか？")) return;
     
       const payload = {
-        doc_date: document.getElementById("doc_date").value,
-        period_start: document.getElementById("start_date").value,
-        period_end: document.getElementById("end_date").value,
-        groups: Object.entries(previewData).map(([tid, g]) => ({
+        p_doc_date: document.getElementById("doc_date").value,
+        p_period_start: document.getElementById("start_date").value,
+        p_period_end: document.getElementById("end_date").value,
+        p_groups: Object.entries(previewData).map(([tid, g]) => ({
           torihikisaki_id: tid,
           selected_kakekin_ids: g.rows
             .filter(r => r.selected !== false)
             .map(r => r.kakekin_id )
         }))
+        .filter(g => g.selected_kakekin_ids.length > 0)
       };
     
-      const { data, error } = await supabase.rpc('rpc_invoice_create_bulk', payload);  --DBfunction化
-      -- const { data, error } = await supabase.functions.invoke("invoice_create", {
-      --   body: payload
-      -- });
+      const { data, error } = await supabase.rpc('rpc_invoice_create_bulk', payload);  // DBfunction化
+      // const { data, error } = await supabase.functions.invoke("invoice_create", {
+      //   body: payload
+      // });
     
       if (error) {
         alert("作成エラー: " + JSON.stringify(error));
