@@ -222,7 +222,7 @@
     }
 
     // ----------------------------
-    // 請求作成（Edge Function 呼び出し）
+    // 請求データ作成（DBFunction 呼び出し）
     // ----------------------------
     async function createInvoice() {
       if (!confirm("選択した内容で請求データを作成します。よろしいですか？")) return;
@@ -245,6 +245,12 @@
       //   body: payload
       // });
     
+  console.log("payload", payload);
+
+  const { data, error } = await supabase.rpc("rpc_invoice_create_bulk", payload);
+
+  console.log("RPC result", data);
+
       if (error) {
         alert("作成エラー: " + JSON.stringify(error));
         console.error(error);
