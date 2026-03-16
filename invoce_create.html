@@ -247,14 +247,13 @@
       // });
 
       console.log("RPC result", data);
-
+console.log("RPC result full", res.data);
 
       if (error) {
         alert("作成エラー: " + JSON.stringify(error));
         console.error(error);
         return;
       }
-console.log("RPC result full", res.data);
     
       alert("請求データ作成が完了しました");
       console.log(data);
