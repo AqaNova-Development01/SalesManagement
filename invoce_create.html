@@ -240,7 +240,6 @@
         .filter(g => g.selected_kakekin_ids.length > 0)
       };
     
-      console.log("payload", payload);
       const { data, error } = await supabase.rpc('rpc_invoice_create_bulk', payload);  // DBfunction化
       // const { data, error } = await supabase.functions.invoke("invoice_create", {
       //   body: payload
@@ -254,9 +253,18 @@
         console.error(error);
         return;
       }
-    
-      console.log("RPC result", data);
-
+      // data.ok が true でも、内部の results にエラーがある可能性がある
+      const results = data.results || [];
+      
+      const failed = results.filter(r => r.ok === false);
+      
+      if (failed.length > 0) {
+        console.error("エラー詳細:", failed);
+        alert("一部または全部の請求書作成に失敗しました。\n" +
+              failed.map(f => `${f.torihikisaki_id}: ${f.error}`).join("\n"));
+        return;
+      }
+      // ここまで来たら完全成功
       alert("請求データ作成が完了しました");
       console.log(data);
     }
