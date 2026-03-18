@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>請求データ作成</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!(await checkLogin())) return;
+
+      setInitialPeriod();
+      await loadTorihikisaki();
+    });
+
+    // ----------------------------
+    // 当月の月初・月末をセット
+    // ----------------------------
+    function setInitialPeriod() {
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      document.getElementById("start_date").value = formatDateLocal(first);
+      document.getElementById("end_date").value   = formatDateLocal(last);
+      document.getElementById("doc_date").value = formatDateLocal(last);
+    }
+
+    // 日付生成
+    function formatDateLocal(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    // ----------------------------
+    // 取引先一覧ロード
+    // ----------------------------
+    async function loadTorihikisaki() {
+      const { data, error } = await supabase
+        .from("torihikisaki")
+        .select("id, name")
+        .order("id");
+
+      if (error) {
+        alert("取引先取得エラー: " + error.message);
+        return;
+      }
+
+      const sel = document.getElementById("torihikisaki");
+      data.forEach(row => {
+        const opt = document.createElement("option");
+        opt.value = row.id;
+        opt.textContent = row.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    // ----------------------------
+    // プレビュー実行
+    // ----------------------------
+    async function loadPreview() {
+      const start = document.getElementById("start_date").value;
+      const end   = document.getElementById("end_date").value;
+      const tid   = document.getElementById("torihikisaki").value;
+
+      const { data, error } = await supabase.rpc("preview_invoice", {
+        p_start: start,
+        p_end: end,
+        p_torihikisaki_id: tid
+      });
+
+      if (error) {
+        alert("プレビュー取得エラー: " + error.message);
+        return;
+      }
+
+      renderPreview(data);
+    }
+
+    // ----------------------------
+    // プレビュー描画
+    // ----------------------------
+    let previewData = {}; // グループ化後のデータ保持
+
+    function renderPreview(rows) {
+      const area = document.getElementById("preview_area");
+      area.innerHTML = "";
+
+      if (!rows || rows.length === 0) {
+        area.innerHTML = "<p>対象データがありません。</p>";
+        updateSummary(0, 0, 0);
+        return;
+      }
+
+      // グルーピング
+      previewData = {};
+      rows.forEach(r => {
+        if (!previewData[r.torihikisaki_id]) previewData[r.torihikisaki_id] = {
+          name: r.torihikisaki_name,
+          rows: []
+        };
+        previewData[r.torihikisaki_id].rows.push(r);
+      });
+
+      let totalCount = 0;
+      let totalAmount = 0;
+
+      for (const tid in previewData) {
+        const g = previewData[tid];
+        const groupDiv = document.createElement("div");
+        groupDiv.className = "group";
+
+        const groupTotal = g.rows.reduce((sum, r) => sum + Number(r.amount), 0);
+        totalCount += g.rows.length;
+        totalAmount += groupTotal;
+
+        // グループヘッダ
+        groupDiv.innerHTML = `
+          <div class="group-header">
+            ${g.name}（${g.rows.length}件）　
+            対象期間合計：${groupTotal.toLocaleString()} 円
+          </div>
+          <table>
+            <tr>
+              <th>選択</th>
+              <th>掛金ID</th>
+              <th>計上日</th>
+              <th>品目</th>
+              <th>数量</th>
+              <th>金額</th>
+              <th>見積番号</th>
+              <th>納品番号</th>
+            </tr>
+          </table>
+        `;
+
+        const table = groupDiv.querySelector("table");
+
+        g.rows.forEach((r, idx) => {
+          r.selected = true;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><input type="checkbox" checked onchange="updateSelection('${tid}', ${idx})"></td>
+            <td>${r.kakekin_id}</td>
+            <td>${r.keijo_date}</td>
+            <td>${r.item}</td>
+            <td>${r.quantity}</td>
+            <td>${Number(r.amount).toLocaleString()}</td>
+            <td>${r.mitsumori_no ?? ""}</td>
+            <td>${r.nouhin_no ?? ""}</td>
+          `;
+          table.appendChild(tr);
+        });
+
+        area.appendChild(groupDiv);
+      }
+
+      updateSummary(totalCount, totalAmount, 0);
+    }
+
+    // ----------------------------
+    // 選択変更
+    // ----------------------------
+    function updateSelection(tid, idx) {
+      const g = previewData[tid];
+      g.rows[idx].selected = !g.rows[idx].selected;
+
+      updateAllSummary();
+    }
+
+    function updateAllSummary() {
+      let total = 0;
+      let selected = 0;
+
+      for (const tid in previewData) {
+        const g = previewData[tid];
+        g.rows.forEach(r => {
+          total += Number(r.amount);
+          if (r.selected !== false) selected += Number(r.amount);
+        });
+      }
+
+      updateSummary(
+        Object.values(previewData).reduce((sum, g) => sum + g.rows.length, 0),
+        total,
+        selected
+      );
+    }
+
+    // ----------------------------
+    // サマリ更新
+    // ----------------------------
+    function updateSummary(count, total, selected) {
+      const unselected = total - selected;
+
+      document.getElementById("summary_bar").innerHTML =
+        `対象件数: ${count} 件　
+         対象期間合計: ${total.toLocaleString()} 円　
+         選択合計: ${selected.toLocaleString()} 円　
+         未選択合計: ${unselected.toLocaleString()} 円`;
+    }
+
+    // ----------------------------
+    // 請求データ作成（DBFunction 呼び出し）
+    // ----------------------------
+    async function createInvoice() {
+      if (!confirm("選択した内容で請求データを作成します。よろしいですか？")) return;
+    
+      const payload = {
+        p_doc_date: document.getElementById("doc_date").value,
+        p_period_start: document.getElementById("start_date").value,
+        p_period_end: document.getElementById("end_date").value,
+        p_groups: Object.entries(previewData).map(([tid, g]) => ({
+          torihikisaki_id: tid,
+          selected_kakekin_ids: g.rows
+            .filter(r => r.selected !== false)
+            .map(r => r.kakekin_id )
+        }))
+        .filter(g => g.selected_kakekin_ids.length > 0)
+      };
+    
+      const { data, error } = await supabase.rpc('rpc_invoice_create_bulk', payload);  // DBfunction化
+      // const { data, error } = await supabase.functions.invoke("invoice_create", {
+      //   body: payload
+      // });
+
+      console.log("RPC result", data);
+
+
+      if (error) {
+        alert("作成エラー: " + JSON.stringify(error));
+        console.error(error);
+        return;
+      }
+      // data.ok が true でも、内部の results にエラーがある可能性がある
+      const results = data.results || [];
+      
+      const failed = results.filter(r => r.ok === false);
+      
+      if (failed.length > 0) {
+        console.error("エラー詳細:", failed);
+        alert("一部または全部の請求書作成に失敗しました。\n" +
+              failed.map(f => `${f.torihikisaki_id}: ${f.error}`).join("\n"));
+        return;
+      }
+      // ここまで来たら完全成功
+      alert("請求データ作成が完了しました");
+      console.log(data);
+    }
+
+    window.loadPreview = loadPreview;
+    window.updateSelection = updateSelection;
+    window.createInvoice = createInvoice;
+
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .group { border: 1px solid #ccc; margin-top: 20px; padding: 10px; }
+    .group-header { font-weight: bold; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    .summary-bar { background: #f0f0f0; padding: 10px; margin-top: 20px; }
+  </style>
+</head>
+
+<body>
+
+<h2>請求データ作成</h2>
+
+<!-- フィルタ -->
+<div>
+  <label>開始日: <input type="date" id="start_date"></label>
+  <label>終了日: <input type="date" id="end_date"></label>
+
+  <label>取引先:
+    <select id="torihikisaki">
+      <option value="ALL">全取引先</option>
+    </select>
+  </label>
+
+  <button onclick="loadPreview()">プレビュー</button>
+</div>
+
+<!-- サマリ -->
+<div class="summary-bar" id="summary_bar">
+  対象件数: 0 件　
+  対象期間合計: 0 円　
+  選択合計: 0 円　
+  未選択合計: 0 円
+</div>
+
+<!-- プレビュー -->
+<div id="preview_area"></div>
+
+<!-- 請求作成 -->
+<div style="margin-top:20px;">
+  <label>発行日: <input type="date" id="doc_date" value=""></label>
+  <button onclick="createInvoice()">請求データ作成</button>
+</div>
+  <button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+</html>
