@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>帳票一覧</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP"; padding:16px; max-width:1100px; margin:auto; }
+    .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+    label { font-size:14px; }
+    select, input[type="text"], input[type="month"] { padding:6px 8px; font-size:14px; }
+    button { padding:6px 10px; font-size:14px; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { border:1px solid #e0e0e0; padding:8px; text-align:left; }
+    th { background:#f5f5f5; }
+    tr.cancelled { background:#fff0f0; color:#6b6b6b; }
+    .actions { display:flex; gap:8px; }
+    .cancel-btn { background:#c82333; color:#fff; border:none; padding:6px 8px; border-radius:4px; }
+    .cancel-btn[disabled] { opacity:0.6; cursor:not-allowed; }
+    .small { font-size:13px; color:#666; }
+  </style>
+</head>
+<body>
+
+  <h1>帳票一覧</h1>
+
+  <div class="controls">
+    <div>
+      <label for="year">年</label>
+      <select id="year"></select>
+    </div>
+
+    <div>
+      <label for="month">月</label>
+      <select id="month"></select>
+    </div>
+
+    <div>
+      <label for="kubun">区分</label>
+      <select id="kubun">
+        <option value="ALL">全て</option>
+        <option value="MT">見積 (MT)</option>
+        <option value="SE">請求 (SE)</option>
+        <option value="DL">納品 (DL)</option>
+        <option value="PO">発注 (PO)</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="torihikisaki_name">取引先</label>
+      <input id="torihikisaki_name" list="torihikisaki_list" placeholder="取引先名で補完" oninput="onTorihikisakiNameInput()" />
+      <datalist id="torihikisaki_list"></datalist>
+      <input id="torihikisaki_id" type="hidden" />
+    </div>
+
+    <div style="margin-left:auto;">
+      <button id="btnSearch">検索</button>
+      <button id="btnClear">クリア</button>
+    </div>
+  </div>
+
+  <table aria-label="帳票一覧">
+    <thead>
+      <tr>
+        <th style="width:120px">操作</th>
+        <th>ID</th>
+        <th>発行日</th>
+        <th>取引先</th>
+        <th>タイトル</th>
+        <th style="text-align:right">合計</th>
+        <th>取消</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <div style="margin-top:12px;">
+    <button onclick="location.href='index.html'">メニューへ</button>
+    <span class="small" style="margin-left:12px;">※区分はメニューから渡された初期値を優先します。画面上で切替可能。</span>
+  </div>
+
+  <!-- 共通 supabase 初期化（プロジェクト値に置き換えてください） -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // ← ここをあなたの Supabase 情報に置き換えてください
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.supabase = supabase;
+
+    // ユーティリティ
+    window.getSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      return data?.session ?? null;
+    };
+
+    window.showError = (msg) => { alert('エラー: ' + msg); console.error(msg); };
+  </script>
+
+  <!-- ページ固有ロジック -->
+  <script type="module">
+    // 既存画面と同じ年月UIを初期化
+    function initYearMonth() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const yearSel = document.getElementById('year');
+      const monthSel = document.getElementById('month');
+
+      for (let y = year - 5; y <= year + 1; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === year) opt.selected = true;
+        yearSel.appendChild(opt);
+      }
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement('option');
+        opt.value = String(m).padStart(2,'0');
+        opt.textContent = m;
+        if (m === month) opt.selected = true;
+        monthSel.appendChild(opt);
+      }
+    }
+
+    // 取引先リスト読み込み（datalist 用）
+    async function loadTorihikisakiList() {
+      const { data, error } = await supabase.from('torihikisaki').select('id,name').order('name');
+      if (error) { console.error(error); return; }
+      const dl = document.getElementById('torihikisaki_list');
+      dl.innerHTML = '';
+      data.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.name;
+        opt.dataset.id = t.id;
+        dl.appendChild(opt);
+      });
+    }
+
+    // 取引先名入力で id をセット
+    window.onTorihikisakiNameInput = function() {
+      const name = document.getElementById('torihikisaki_name').value;
+      const opts = document.getElementById('torihikisaki_list').options;
+      document.getElementById('torihikisaki_id').value = '';
+      for (let i=0;i<opts.length;i++){
+        if (opts[i].value === name) {
+          document.getElementById('torihikisaki_id').value = opts[i].dataset.id;
+          break;
+        }
+      }
+    };
+
+    // URL パラメータ処理（from, kubun 初期値）
+    const params = new URLSearchParams(location.search);
+    const from = params.get('from') || 'menu';
+    const initialKubun = params.get('kubun') || 'ALL';
+    document.getElementById('kubun').value = initialKubun;
+
+    // 検索実行
+    async function search() {
+      const year = document.getElementById('year').value;
+      const month = document.getElementById('month').value;
+      const yymm = year + '-' + month; // YYYY-MM
+      const kubun = document.getElementById('kubun').value;
+      const torihikisaki_id = document.getElementById('torihikisaki_id').value || null;
+
+      // document テーブルを対象に年月（document_date）と区分（id prefix）で絞る
+      // id の先頭2文字で区分を判定している前提（例: "SE-..."）
+      let filterExpr = supabase.from('document').select(`
+        id, document_date, torihikisaki_id, title, total, cancel_flag,
+        torihikisaki(name)
+      `);
+
+      // 年月絞り（document_date の YYYY-MM）
+      if (year && month) {
+        filterExpr = filterExpr.gte('document_date', `${year}-${month}-01`)
+                               .lt('document_date', new Date(year, Number(month), 1).toISOString().slice(0,10));
+        // Note: 上は簡易。必要なら to_char を使う RPC に置き換え
+      }
+
+      // kubun 絞り（ALL 以外は id の先頭で絞る）
+      if (kubun && kubun !== 'ALL') {
+        // Supabase client では id の先頭2文字での絞りが直接できないため、filter by like
+        filterExpr = filterExpr.ilike('id', `${kubun}%`);
+      }
+
+      // 取引先絞り
+      if (torihikisaki_id) {
+        filterExpr = filterExpr.eq('torihikisaki_id', torihikisaki_id);
+      }
+
+      // 並び順
+      filterExpr = filterExpr.order('document_date', { ascending: false }).order('id', { ascending: false });
+
+      const { data, error } = await filterExpr;
+      if (error) {
+        window.showError(error.message);
+        return;
+      }
+      renderTable(data || []);
+    }
+
+    // テーブル描画
+    function renderTable(rows) {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      if (!rows.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="7">該当データがありません</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        if (r.cancel_flag === 1 || r.cancel_flag === '1') tr.classList.add('cancelled');
+
+        // 操作ボタン群（編集 / MF / 取消 などは from によって変えることも可能）
+        const ops = document.createElement('td');
+        ops.className = 'actions';
+
+        // 編集ボタン（menu から来た場合は編集へ）
+        const btnEdit = document.createElement('button');
+        btnEdit.textContent = '編集';
+        btnEdit.addEventListener('click', () => {
+          location.href = `document_edit.html?id=${r.id}`;
+        });
+        ops.appendChild(btnEdit);
+
+        // MF連携ボタン（例）
+        const btnMf = document.createElement('button');
+        btnMf.textContent = 'MF連携';
+        btnMf.addEventListener('click', () => {
+          location.href = `mf_link.html?document_id=${r.id}`;
+        });
+        ops.appendChild(btnMf);
+
+        // 取消ボタン
+        const btnCancel = document.createElement('button');
+        btnCancel.textContent = r.cancel_flag == 1 ? '取消済' : '取消';
+        btnCancel.className = 'cancel-btn';
+        if (r.cancel_flag == 1) btnCancel.disabled = true;
+        btnCancel.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          await cancelDocument(r.id, btnCancel);
+        });
+        ops.appendChild(btnCancel);
+
+        tr.appendChild(ops);
+
+        // 他カラム
+        const tdId = document.createElement('td'); tdId.textContent = r.id; tr.appendChild(tdId);
+        const tdDate = document.createElement('td'); tdDate.textContent = r.document_date ? r.document_date.slice(0,10) : ''; tr.appendChild(tdDate);
+        const tdTorihiki = document.createElement('td'); tdTorihiki.textContent = r.torihikisaki?.name || ''; tr.appendChild(tdTorihiki);
+        const tdTitle = document.createElement('td'); tdTitle.textContent = r.title || ''; tr.appendChild(tdTitle);
+        const tdTotal = document.createElement('td'); tdTotal.style.textAlign = 'right'; tdTotal.textContent = r.total ?? ''; tr.appendChild(tdTotal);
+        const tdCancel = document.createElement('td'); tdCancel.textContent = r.cancel_flag == 1 ? 'はい' : 'いいえ'; tr.appendChild(tdCancel);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // cancel RPC 呼び出し（共通）
+    async function cancelDocument(docId, buttonEl = null) {
+      if (!confirm('この帳票を取消しますか？')) return;
+      const session = await window.getSession();
+      if (!session) { window.showError('未認証です。ログインしてください。'); return; }
+
+      try {
+        if (buttonEl) { buttonEl.disabled = true; const prev = buttonEl.textContent; buttonEl.textContent = '取消中...'; }
+        const { data, error } = await supabase.rpc('rpc_document_cancel', { p_document_id: docId });
+        if (error) { window.showError(error.message); if (buttonEl) { buttonEl.disabled = false; buttonEl.textContent = '取消'; } return; }
+        if (!data?.ok) { window.showError(data?.error || '取消に失敗しました'); if (buttonEl) { buttonEl.disabled = false; buttonEl.textContent = '取消'; } return; }
+        alert(`取消しました（${data.document_id}）。関連掛金更新: ${data.kakekin_updated}`);
+        await search();
+      } catch (e) {
+        window.showError(e.message || e);
+      } finally {
+        // nothing
+      }
+    }
+
+    // 初期処理
+    document.getElementById('btnSearch').addEventListener('click', search);
+    document.getElementById('btnClear').addEventListener('click', () => { document.getElementById('torihikisaki_name').value=''; document.getElementById('torihikisaki_id').value=''; initYearMonth(); document.getElementById('kubun').value = initialKubun; search(); });
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initYearMonth();
+      await loadTorihikisakiList();
+
+      // URL で取引先IDが渡されている場合は固定
+      const torihikisaki_from = params.get('torihikisaki_id');
+      if (torihikisaki_from) {
+        document.getElementById('torihikisaki_id').value = torihikisaki_from;
+        // 名前は取得してセット（簡易）
+        const { data } = await supabase.from('torihikisaki').select('name').eq('id', torihikisaki_from).single();
+        if (data) {
+          document.getElementById('torihikisaki_name').value = data.name;
+          document.getElementById('torihikisaki_name').readOnly = true;
+        }
+      }
+
+      // kubun 初期値は URL の値を優先（menu から来た場合）
+      document.getElementById('kubun').value = initialKubun;
+
+      // 最初の検索
+      await search();
+    });
+
+    // エクスポート（テスト用）
+    window.search = search;
+    window.cancelDocument = cancelDocument;
+  </script>
+</body>
+</html>
