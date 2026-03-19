@@ -266,24 +266,70 @@
           btnMf.textContent = r.mf_document_id ? 'MF済' : 'MF連携';
           
           // MF不可条件：取消済 or MF済
+          // --- MF連携ボタンの安全なハンドラ（差し替え） ---
           if (r.cancel_flag == 1 || r.mf_document_id) {
             btnMf.disabled = true;
           } else {
             btnMf.addEventListener('click', async () => {
               if (!confirm('この帳票をMFクラウドへ送信しますか？')) return;
           
-              const res = await fetch(
-                `https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_send_invoice?document_id=${r.id}`
-              );
-              const json = await res.json();
-          
-              if (!res.ok) {
-                alert("MF連携エラー: " + JSON.stringify(json));
+              // セッション（最新トークン）を取得
+              const { data: sessionData } = await supabase.auth.getSession();
+              const accessToken = sessionData?.session?.access_token;
+              if (!accessToken) {
+                alert('ログインが必要です。再ログインしてください。');
                 return;
               }
           
-              alert("MF連携成功！ MF側ID: " + json.mf_document_id);
-              await search();
+              // UI: 二重送信防止
+              btnMf.disabled = true;
+              const originalText = btnMf.textContent;
+              btnMf.textContent = '送信中...';
+          
+              try {
+                const res = await fetch(
+                  'https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_send_invoice',
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ document_id: r.id }),
+                  }
+                );
+          
+                // ネットワークエラー等で fetch が失敗するとここに来る
+                const json = await res.json().catch(() => ({ error: 'Invalid JSON response' }));
+          
+                if (!res.ok) {
+                  // 401 は再認証を促す
+                  if (res.status === 401) {
+                    alert('認証エラーです。再ログインしてください。');
+                  } else {
+                    alert('MF連携エラー: ' + (json?.error || JSON.stringify(json)));
+                  }
+                  return;
+                }
+          
+                // 成功時: サーバが返すキー名に合わせる（mf_document_id を期待）
+                const mfId = json?.mf_document_id ?? json?.mf_invoice_id ?? json?.mfId ?? null;
+                if (!mfId) {
+                  alert('MF連携は成功しましたが、MF側IDが返りませんでした: ' + JSON.stringify(json));
+                } else {
+                  alert('MF連携成功！ MF側ID: ' + mfId);
+                }
+          
+                // 画面更新（再検索）
+                await search();
+              } catch (e) {
+                console.error('MF連携通信エラー', e);
+                alert('通信エラーが発生しました。コンソールを確認してください。');
+              } finally {
+                // UI 復帰（MF済なら disabled のまま）
+                btnMf.textContent = originalText;
+                btnMf.disabled = !!r.mf_document_id || r.cancel_flag == 1;
+              }
             });
           }
           ops.appendChild(btnMf);
