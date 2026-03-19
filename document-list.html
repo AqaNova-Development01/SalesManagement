@@ -195,7 +195,7 @@
         try {
           let query = supabase.from('document').select(`
             id, document_date, torihikisaki_id, title, total, cancel_flag,
-            torihikisaki(name)
+            mf_document_id, torihikisaki(name)
           `);
       
           // 年月絞り（document_date >= startDate AND document_date < endDate）
@@ -243,33 +243,67 @@
           const tr = document.createElement('tr');
           if (r.cancel_flag === 1 || r.cancel_flag === '1') tr.classList.add('cancelled');
 
+          // 操作ボタン群
           const ops = document.createElement('td');
           ops.className = 'actions';
-
+          
+          // --- 編集ボタン ---
           const btnEdit = document.createElement('button');
           btnEdit.textContent = '編集';
-          btnEdit.addEventListener('click', () => {
-            location.href = `document_edit.html?id=${r.id}`;
-          });
+          
+          // 編集不可条件：取消済 or MF連携済
+          if (r.cancel_flag == 1 || r.mf_document_id) {
+            btnEdit.disabled = true;
+          } else {
+            btnEdit.addEventListener('click', () => {
+              location.href = `document_edit.html?id=${r.id}`;
+            });
+          }
           ops.appendChild(btnEdit);
-
+          
+          // --- MF連携ボタン ---
           const btnMf = document.createElement('button');
-          btnMf.textContent = 'MF連携';
-          btnMf.addEventListener('click', () => {
-            location.href = `mf_link.html?document_id=${r.id}`;
-          });
+          btnMf.textContent = r.mf_document_id ? 'MF済' : 'MF連携';
+          
+          // MF不可条件：取消済 or MF済
+          if (r.cancel_flag == 1 || r.mf_document_id) {
+            btnMf.disabled = true;
+          } else {
+            btnMf.addEventListener('click', async () => {
+              if (!confirm('この帳票をMFクラウドへ送信しますか？')) return;
+          
+              const res = await fetch(
+                `https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_send_invoice?document_id=${r.id}`
+              );
+              const json = await res.json();
+          
+              if (!res.ok) {
+                alert("MF連携エラー: " + JSON.stringify(json));
+                return;
+              }
+          
+              alert("MF連携成功！ MF側ID: " + json.mf_document_id);
+              await search();
+            });
+          }
           ops.appendChild(btnMf);
-
+          
+          // --- 取消ボタン ---
           const btnCancel = document.createElement('button');
           btnCancel.textContent = r.cancel_flag == 1 ? '取消済' : '取消';
           btnCancel.className = 'cancel-btn';
-          if (r.cancel_flag == 1) btnCancel.disabled = true;
-          btnCancel.addEventListener('click', async (ev) => {
-            ev.stopPropagation();
-            await cancelDocument(r.id, btnCancel);
-          });
+          
+          if (r.cancel_flag == 1) {
+            btnCancel.disabled = true;
+            // ★ 将来「取消取り下げ」ボタンをここに追加できる
+          } else {
+            btnCancel.addEventListener('click', async (ev) => {
+              ev.stopPropagation();
+              await cancelDocument(r.id, btnCancel);
+            });
+          }
           ops.appendChild(btnCancel);
-
+          
           tr.appendChild(ops);
 
           const tdId = document.createElement('td'); tdId.textContent = r.id; tr.appendChild(tdId);
