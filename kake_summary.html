@@ -111,11 +111,11 @@
         tr.innerHTML = `
           <td>${r.torihikisaki_id}</td>
           <td>${r.torihikisaki_name}</td>
-          <td>${r.kisyobalance.toLocaleString()}</td>
-          <td>${r.kake.toLocaleString()}</td>
-          <td>${r.kake_tax.toLocaleString()}</td>
-          <td>${r.nyukin.toLocaleString()}</td>
-          <td>${r.kimatsubalance.toLocaleString()}</td>
+          <td class="numeric">${r.kisyobalance.toLocaleString()}</td>
+          <td class="numeric">${r.kake.toLocaleString()}</td>
+          <td class="numeric">${r.kake_tax.toLocaleString()}</td>
+          <td class="numeric">${r.nyukin.toLocaleString()}</td>
+          <td class="numeric">${r.kimatsubalance.toLocaleString()}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -126,11 +126,11 @@
       tr.innerHTML = `
         <td>【合計】</td>
         <td></td>
-        <td>${total_kisyo.toLocaleString()}</td>
-        <td>${total_kake.toLocaleString()}</td>
-        <td>${total_tax.toLocaleString()}</td>
-        <td>${total_nyukin.toLocaleString()}</td>
-        <td>${total_kimatsu.toLocaleString()}</td>
+        <td class="numeric">${total_kisyo.toLocaleString()}</td>
+        <td class="numeric">${total_kake.toLocaleString()}</td>
+        <td class="numeric">${total_tax.toLocaleString()}</td>
+        <td class="numeric">${total_nyukin.toLocaleString()}</td>
+        <td class="numeric">${total_kimatsu.toLocaleString()}</td>
       `;
       tbody.appendChild(tr);
     }
@@ -251,6 +251,7 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #eee; }
+    td.numeric { text-align: right; }
   </style>
 </head>
 
