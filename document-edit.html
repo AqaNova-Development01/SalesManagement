@@ -65,7 +65,7 @@
         .from("hinmoku")
         .select("id, item, price, unit")
         .eq("torihikisaki_id", "TK00000")
-        .order("id");
+        .order("id", { ascending: true });
 
       const area = document.getElementById("item_list");
       data.forEach(r => {
