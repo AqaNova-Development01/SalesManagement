@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>見積書作成</title>
+  <title>帳票作成</title>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -12,7 +12,11 @@
       "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
     );
 
-    let mode = "MT"; // 今は見積書のみ
+    // ----------------------------
+    // URL パラメータ
+    // ----------------------------
+    const params = new URLSearchParams(window.location.search);
+    const kubun = params.get("kubun");   // MT / DL / PO など
 
     // ----------------------------
     // 初期処理
@@ -20,7 +24,19 @@
     window.addEventListener("DOMContentLoaded", async () => {
       await loadTorihikisaki();
       setDefaultHeader();
-      await loadItemMaster(); // 品目TBL
+
+      if (kubun === "MT") {
+        document.getElementById("title_page").innerText = "見積書 作成";
+        await loadItemMaster(); // 品目TBL
+      } else if (kubun === "DL") {
+        document.getElementById("title_page").innerText = "納品書 作成";
+        // 後で DL 用の明細追加処理を実装
+      } else if (kubun === "PO") {
+        document.getElementById("title_page").innerText = "発注書 作成";
+        // 後で PO 用の明細追加処理を実装
+      } else {
+        alert("不明な区分です: " + kubun);
+      }
     });
 
     // ----------------------------
@@ -47,7 +63,10 @@
     function setDefaultHeader() {
       const today = new Date();
       document.getElementById("document_date").value = formatDate(today);
-      document.getElementById("title").value = "見積書";
+
+      if (kubun === "MT") document.getElementById("title").value = "見積書";
+      if (kubun === "DL") document.getElementById("title").value = "納品書";
+      if (kubun === "PO") document.getElementById("title").value = "発注書";
     }
 
     function formatDate(d) {
@@ -58,24 +77,29 @@
     }
 
     // ----------------------------
-    // 品目TBL（自社製品）読み込み
+    // 品目TBL（自社製品）読み込み（MT / PO 用）
     // ----------------------------
     async function loadItemMaster() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("hinmoku")
         .select("id, name, price, unit")
         .eq("torihikisaki_id", "TK00000")
         .order("id");
+
+      if (error) {
+        alert("品目取得エラー: " + error.message);
+        return;
+      }
 
       const area = document.getElementById("item_list");
       data.forEach(r => {
         const div = document.createElement("div");
         div.className = "item-row";
         div.innerHTML = `
-          <button onclick="addDetail('${r.id}', '${r.item}', ${r.price}, '${r.unit}')">
+          <button onclick="addDetail('${r.id}', '${r.name}', ${r.price}, '${r.unit}')">
             追加
           </button>
-          ${r.item}（${r.price.toLocaleString()} 円 / ${r.unit}）
+          ${r.name}（${r.price.toLocaleString()} 円 / ${r.unit}）
         `;
         area.appendChild(div);
       });
@@ -84,12 +108,12 @@
     // ----------------------------
     // 明細追加
     // ----------------------------
-    window.addDetail = function(id, item, price, unit) {
+    window.addDetail = function(id, name, price, unit) {
       const tbody = document.getElementById("detail_body");
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${item}</td>
+        <td>${name}</td>
         <td><input type="number" value="1" min="1" onchange="recalc(this)"></td>
         <td><input type="number" value="${price}" onchange="recalc(this)"></td>
         <td class="amount">${price}</td>
@@ -121,9 +145,31 @@
     }
 
     // ----------------------------
-    // 保存処理
+    // 保存処理（kubun で分岐）
     // ----------------------------
     window.saveDocument = async function() {
+      if (kubun === "MT") {
+        await saveMT();
+        return;
+      }
+
+      if (kubun === "DL") {
+        alert("納品書（DL）はまだ未実装です");
+        return;
+      }
+
+      if (kubun === "PO") {
+        alert("発注書（PO）はまだ未実装です");
+        return;
+      }
+
+      alert("不明な区分です: " + kubun);
+    };
+
+    // ----------------------------
+    // MT 保存処理（採番対応 完全版）
+    // ----------------------------
+    async function saveMT() {
       const torihikisaki_id = document.getElementById("torihikisaki").value;
       const document_date = document.getElementById("document_date").value;
       const title = document.getElementById("title").value;
@@ -146,45 +192,72 @@
         return;
       }
 
-      // document 登録
-      const { data: doc, error: docErr } = await supabase
+      // ① 見積番号を採番
+      const { data: seq, error: seqErr } = await supabase.rpc(
+        "get_next_document_code",
+        { prefix: "MT", p_date: document_date }
+      );
+
+      if (seqErr) {
+        alert("採番エラー: " + seqErr.message);
+        return;
+      }
+
+      const newDocId = seq; // MT2604000001 のような文字列
+
+      // ② document 登録
+      const { error: docErr } = await supabase
         .from("document")
         .insert({
+          id: newDocId,
           kubun: "MT",
           torihikisaki_id,
           document_date,
           title,
           total: details.reduce((s, d) => s + d.amount, 0),
           memo
-        })
-        .select()
-        .single();
+        });
 
       if (docErr) {
         alert("ヘッダ登録エラー: " + docErr.message);
         return;
       }
 
-      // 明細登録
-      const rows = details.map((d, idx) => ({
-        document_id: doc.id,
-        item: d.item,
-        quantity: d.qty,
-        price: d.price,
-        amount: d.amount,
-        unit: d.unit,
-        tax_rate: 10
-      }));
+      // ③ 明細登録（採番しながら1行ずつ）
+      for (let i = 0; i < details.length; i++) {
+        const d = details[i];
 
-      const { error: detErr } = await supabase.from("document_detail").insert(rows);
-      if (detErr) {
-        alert("明細登録エラー: " + detErr.message);
-        return;
+        const { data: detId, error: detSeqErr } = await supabase.rpc(
+          "get_next_document_detail_id",
+          { doc_id: newDocId }
+        );
+
+        if (detSeqErr) {
+          alert("明細採番エラー: " + detSeqErr.message);
+          return;
+        }
+
+        const { error: detErr } = await supabase.from("document_detail").insert({
+          id: detId,
+          document_id: newDocId,
+          item: d.item,
+          quantity: d.qty,
+          price: d.price,
+          amount: d.amount,
+          unit: d.unit,
+          tax_rate: 10
+        });
+
+        if (detErr) {
+          alert("明細登録エラー: " + detErr.message);
+          return;
+        }
       }
 
-      alert("見積書を作成しました");
+      alert("見積書を作成しました（番号: " + newDocId + "）");
       location.href = "document-list.html?f=MT";
-    };
+    }
+
   </script>
 
   <style>
@@ -197,7 +270,7 @@
 
 <body>
 
-<h2>見積書作成</h2>
+<h2 id="title_page">帳票作成</h2>
 
 <div>
   <label>取引先:
@@ -222,7 +295,7 @@
 
 <hr>
 
-<h3>明細追加（品目TBL）</h3>
+<h3>明細追加</h3>
 <div id="item_list"></div>
 
 <hr>
