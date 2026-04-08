@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>見積書作成</title>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    let mode = "MT"; // 今は見積書のみ
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadTorihikisaki();
+      setDefaultHeader();
+      await loadItemMaster(); // 品目TBL
+    });
+
+    // ----------------------------
+    // 取引先一覧
+    // ----------------------------
+    async function loadTorihikisaki() {
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("id, name")
+        .order("id");
+
+      const sel = document.getElementById("torihikisaki");
+      data.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = r.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    // ----------------------------
+    // ヘッダ初期値
+    // ----------------------------
+    function setDefaultHeader() {
+      const today = new Date();
+      document.getElementById("document_date").value = formatDate(today);
+      document.getElementById("title").value = "見積書";
+    }
+
+    function formatDate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    // ----------------------------
+    // 品目TBL（自社製品）読み込み
+    // ----------------------------
+    async function loadItemMaster() {
+      const { data } = await supabase
+        .from("hinmoku")
+        .select("id, item, price, unit")
+        .eq("torihikisaki_id", "TK00000")
+        .order("id");
+
+      const area = document.getElementById("item_list");
+      data.forEach(r => {
+        const div = document.createElement("div");
+        div.className = "item-row";
+        div.innerHTML = `
+          <button onclick="addDetail('${r.id}', '${r.item}', ${r.price}, '${r.unit}')">
+            追加
+          </button>
+          ${r.item}（${r.price.toLocaleString()} 円 / ${r.unit}）
+        `;
+        area.appendChild(div);
+      });
+    }
+
+    // ----------------------------
+    // 明細追加
+    // ----------------------------
+    window.addDetail = function(id, item, price, unit) {
+      const tbody = document.getElementById("detail_body");
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item}</td>
+        <td><input type="number" value="1" min="1" onchange="recalc(this)"></td>
+        <td><input type="number" value="${price}" onchange="recalc(this)"></td>
+        <td class="amount">${price}</td>
+        <td>${unit}</td>
+        <td><button onclick="this.closest('tr').remove(); calcTotal();">削除</button></td>
+      `;
+      tbody.appendChild(tr);
+
+      calcTotal();
+    };
+
+    // ----------------------------
+    // 金額再計算
+    // ----------------------------
+    window.recalc = function(elm) {
+      const tr = elm.closest("tr");
+      const qty = Number(tr.children[1].children[0].value);
+      const price = Number(tr.children[2].children[0].value);
+      tr.querySelector(".amount").textContent = qty * price;
+      calcTotal();
+    };
+
+    function calcTotal() {
+      let sum = 0;
+      document.querySelectorAll(".amount").forEach(td => {
+        sum += Number(td.textContent);
+      });
+      document.getElementById("total").textContent = sum.toLocaleString();
+    }
+
+    // ----------------------------
+    // 保存処理
+    // ----------------------------
+    window.saveDocument = async function() {
+      const torihikisaki_id = document.getElementById("torihikisaki").value;
+      const document_date = document.getElementById("document_date").value;
+      const title = document.getElementById("title").value;
+      const memo = document.getElementById("memo").value;
+
+      // 明細収集
+      const details = [];
+      document.querySelectorAll("#detail_body tr").forEach(tr => {
+        const item = tr.children[0].textContent;
+        const qty = Number(tr.children[1].children[0].value);
+        const price = Number(tr.children[2].children[0].value);
+        const amount = qty * price;
+        const unit = tr.children[4].textContent;
+
+        details.push({ item, qty, price, amount, unit });
+      });
+
+      if (details.length === 0) {
+        alert("明細がありません");
+        return;
+      }
+
+      // document 登録
+      const { data: doc, error: docErr } = await supabase
+        .from("document")
+        .insert({
+          kubun: "MT",
+          torihikisaki_id,
+          document_date,
+          title,
+          total: details.reduce((s, d) => s + d.amount, 0),
+          memo
+        })
+        .select()
+        .single();
+
+      if (docErr) {
+        alert("ヘッダ登録エラー: " + docErr.message);
+        return;
+      }
+
+      // 明細登録
+      const rows = details.map((d, idx) => ({
+        document_id: doc.id,
+        item: d.item,
+        quantity: d.qty,
+        price: d.price,
+        amount: d.amount,
+        unit: d.unit,
+        tax_rate: 10
+      }));
+
+      const { error: detErr } = await supabase.from("document_detail").insert(rows);
+      if (detErr) {
+        alert("明細登録エラー: " + detErr.message);
+        return;
+      }
+
+      alert("見積書を作成しました");
+      location.href = "document-list.html?f=MT";
+    };
+  </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; }
+    .item-row { margin: 5px 0; }
+  </style>
+</head>
+
+<body>
+
+<h2>見積書作成</h2>
+
+<div>
+  <label>取引先:
+    <select id="torihikisaki"></select>
+  </label>
+  <br><br>
+
+  <label>発行日:
+    <input type="date" id="document_date">
+  </label>
+  <br><br>
+
+  <label>表題:
+    <input type="text" id="title" size="40">
+  </label>
+  <br><br>
+
+  <label>メモ:
+    <textarea id="memo" rows="3" cols="50"></textarea>
+  </label>
+</div>
+
+<hr>
+
+<h3>明細追加（品目TBL）</h3>
+<div id="item_list"></div>
+
+<hr>
+
+<h3>明細</h3>
+<table>
+  <thead>
+    <tr>
+      <th>品目</th>
+      <th>数量</th>
+      <th>単価</th>
+      <th>金額</th>
+      <th>単位</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody id="detail_body"></tbody>
+</table>
+
+<h3>合計: <span id="total">0</span> 円</h3>
+
+<button onclick="saveDocument()">保存</button>
+<button onclick="location.href='index.html'">メニューへ</button>
+
+</body>
+</html>
