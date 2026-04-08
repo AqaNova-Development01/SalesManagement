@@ -63,9 +63,9 @@
     async function loadItemMaster() {
       const { data } = await supabase
         .from("hinmoku")
-        .select("id, item, price, unit")
+        .select("id, name, price, unit")
         .eq("torihikisaki_id", "TK00000")
-        .order("id", { ascending: true });
+        .order("id");
 
       const area = document.getElementById("item_list");
       data.forEach(r => {
