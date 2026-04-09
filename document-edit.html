@@ -16,7 +16,7 @@
     // URL パラメータ
     // ----------------------------
     const params = new URLSearchParams(window.location.search);
-    const kubun = params.get("kubun");   // MT / DL / PO など
+    const kubun = params.get("kubun");   // MT / DL / PO
 
     // ----------------------------
     // 初期処理
@@ -27,15 +27,9 @@
 
       if (kubun === "MT") {
         document.getElementById("title_page").innerText = "見積書 作成";
-        await loadItemMaster(); // 品目TBL
-      } else if (kubun === "DL") {
-        document.getElementById("title_page").innerText = "納品書 作成";
-        // 後で DL 用の明細追加処理を実装
-      } else if (kubun === "PO") {
-        document.getElementById("title_page").innerText = "発注書 作成";
-        // 後で PO 用の明細追加処理を実装
+        await loadItemMaster();
       } else {
-        alert("不明な区分です: " + kubun);
+        alert("未対応の区分です: " + kubun);
       }
     });
 
@@ -65,8 +59,6 @@
       document.getElementById("document_date").value = formatDate(today);
 
       if (kubun === "MT") document.getElementById("title").value = "見積書";
-      if (kubun === "DL") document.getElementById("title").value = "納品書";
-      if (kubun === "PO") document.getElementById("title").value = "発注書";
     }
 
     function formatDate(d) {
@@ -77,12 +69,12 @@
     }
 
     // ----------------------------
-    // 品目TBL（自社製品）読み込み（MT / PO 用）
+    // 品目TBL（税率も取得）
     // ----------------------------
     async function loadItemMaster() {
       const { data, error } = await supabase
         .from("hinmoku")
-        .select("id, name, price, unit")
+        .select("id, name, price, unit, tax_rate")
         .eq("torihikisaki_id", "TK00000")
         .order("id");
 
@@ -96,78 +88,74 @@
         const div = document.createElement("div");
         div.className = "item-row";
         div.innerHTML = `
-          <button onclick="addDetail('${r.id}', '${r.name}', ${r.price}, '${r.unit}')">
+          <button onclick="addDetail('${r.id}', '${r.name}', ${r.price}, '${r.unit}', ${r.tax_rate})">
             追加
           </button>
-          ${r.name}（${r.price.toLocaleString()} 円 / ${r.unit}）
+          ${r.name}（${r.price.toLocaleString()} 円 / ${r.unit} / 税率:${r.tax_rate}%）
         `;
         area.appendChild(div);
       });
     }
 
     // ----------------------------
-    // 明細追加
+    // 明細追加（すべて編集可能）
     // ----------------------------
-    window.addDetail = function(id, name, price, unit) {
+    window.addDetail = function(id, name, price, unit, tax_rate) {
       const tbody = document.getElementById("detail_body");
 
       const tr = document.createElement("tr");
+      tr.dataset.hinmokuId = id;
+
       tr.innerHTML = `
-        <td>${name}</td>
-        <td><input type="number" value="1" min="1" onchange="recalc(this)"></td>
-        <td><input type="number" value="${price}" onchange="recalc(this)"></td>
-        <td class="amount">${price}</td>
-        <td>${unit}</td>
+        <td><input type="text" value="${name}"></td>
+        <td><input type="text" class="num" value="1" oninput="recalc(this)"></td>
+        <td><input type="text" class="num" value="${price.toLocaleString()}" oninput="recalc(this)"></td>
+        <td class="amount num">0</td>
+        <td><input type="text" value="${unit}"></td>
+        <td><input type="text" class="num" value="${tax_rate}" oninput="recalc(this)"></td>
         <td><button onclick="this.closest('tr').remove(); calcTotal();">削除</button></td>
       `;
       tbody.appendChild(tr);
 
-      calcTotal();
+      recalc(tr.querySelector("input"));
     };
 
     // ----------------------------
-    // 金額再計算
+    // 金額再計算（カンマ対応）
     // ----------------------------
     window.recalc = function(elm) {
       const tr = elm.closest("tr");
-      const qty = Number(tr.children[1].children[0].value);
-      const price = Number(tr.children[2].children[0].value);
-      tr.querySelector(".amount").textContent = qty * price;
+
+      const qty = Number(tr.children[1].children[0].value.replace(/,/g, ""));
+      const price = Number(tr.children[2].children[0].value.replace(/,/g, ""));
+
+      const amount = qty * price;
+      tr.querySelector(".amount").textContent = amount.toLocaleString();
+
       calcTotal();
     };
 
     function calcTotal() {
       let sum = 0;
       document.querySelectorAll(".amount").forEach(td => {
-        sum += Number(td.textContent);
+        sum += Number(td.textContent.replace(/,/g, ""));
       });
       document.getElementById("total").textContent = sum.toLocaleString();
     }
 
     // ----------------------------
-    // 保存処理（kubun で分岐）
+    // 保存処理（MT）
     // ----------------------------
     window.saveDocument = async function() {
-      if (kubun === "MT") {
-        await saveMT();
+      if (kubun !== "MT") {
+        alert("未対応の区分です");
         return;
       }
-
-      if (kubun === "DL") {
-        alert("納品書（DL）はまだ未実装です");
-        return;
-      }
-
-      if (kubun === "PO") {
-        alert("発注書（PO）はまだ未実装です");
-        return;
-      }
-
-      alert("不明な区分です: " + kubun);
+      await saveMT();
     };
 
     // ----------------------------
-    // MT 保存処理（採番対応 完全版）
+    // MT 保存処理（採番対応）
     // ----------------------------
     async function saveMT() {
       const torihikisaki_id = document.getElementById("torihikisaki").value;
@@ -178,13 +166,14 @@
       // 明細収集
       const details = [];
       document.querySelectorAll("#detail_body tr").forEach(tr => {
-        const item = tr.children[0].textContent;
-        const qty = Number(tr.children[1].children[0].value);
-        const price = Number(tr.children[2].children[0].value);
+        const item = tr.children[0].children[0].value;
+        const qty = Number(tr.children[1].children[0].value.replace(/,/g, ""));
+        const price = Number(tr.children[2].children[0].value.replace(/,/g, ""));
         const amount = qty * price;
-        const unit = tr.children[4].textContent;
+        const unit = tr.children[4].children[0].value;
+        const tax_rate = Number(tr.children[5].children[0].value);
 
-        details.push({ item, qty, price, amount, unit });
+        details.push({ item, qty, price, amount, unit, tax_rate });
       });
 
       if (details.length === 0) {
@@ -192,7 +181,7 @@
         return;
       }
 
-      // ① 見積番号を採番
+      // ① 見積番号採番
       const { data: seq, error: seqErr } = await supabase.rpc(
         "get_next_document_code",
         { prefix: "MT", p_date: document_date }
@@ -203,14 +192,13 @@
         return;
       }
 
-      const newDocId = seq; // MT2604000001 のような文字列
+      const newDocId = seq;
 
       // ② document 登録
       const { error: docErr } = await supabase
         .from("document")
         .insert({
           id: newDocId,
-          kubun: "MT",
           torihikisaki_id,
           document_date,
           title,
@@ -223,10 +211,8 @@
         return;
       }
 
-      // ③ 明細登録（採番しながら1行ずつ）
-      for (let i = 0; i < details.length; i++) {
-        const d = details[i];
-
+      // ③ 明細登録
+      for (let d of details) {
         const { data: detId, error: detSeqErr } = await supabase.rpc(
           "get_next_document_detail_id",
           { doc_id: newDocId }
@@ -245,7 +231,7 @@
           price: d.price,
           amount: d.amount,
           unit: d.unit,
-          tax_rate: 10
+          tax_rate: d.tax_rate
         });
 
         if (detErr) {
@@ -265,6 +251,8 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px; }
     .item-row { margin: 5px 0; }
+    input.num { text-align: right; }
+    td.num { text-align: right; }
   </style>
 </head>
 
@@ -295,7 +283,7 @@
 
 <hr>
 
-<h3>明細追加</h3>
+<h3>明細追加（品目TBL）</h3>
 <div id="item_list"></div>
 
 <hr>
@@ -309,6 +297,7 @@
       <th>単価</th>
       <th>金額</th>
       <th>単位</th>
+      <th>税率</th>
       <th>操作</th>
     </tr>
   </thead>
