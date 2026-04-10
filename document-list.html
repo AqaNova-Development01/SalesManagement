@@ -142,6 +142,14 @@
             return;
           }
       
+      
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData?.session?.access_token;
+          if (!accessToken) {
+            alert("ログインが必要です。再ログインしてください。");
+            return;
+          }
+
           // Edge Function URL
           const url = `https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/${endpoint}`;
       
@@ -154,7 +162,7 @@
             headers: {
               "Content-Type": "application/json",
               "apikey": supabaseAnonKey,
-              "Authorization": `Bearer ${supabaseAnonKey}`
+              "Authorization": `Bearer ${accessToken}`
             },
             body: JSON.stringify({ document_id: id })
           });
