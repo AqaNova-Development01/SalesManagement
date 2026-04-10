@@ -316,9 +316,8 @@
           if (r.cancel_flag == 1 || r.mf_document_id) {
             btnEdit.disabled = true;
           } else {
-              btnEdit.addEventListener('click', () => {
-                location.href = `document_edit.html?kubun=${getKubun(r.id)}&id=${r.id}`;
-              });
+            btnEdit.addEventListener('click', () => {
+              location.href = `document_edit.html?kubun=${getKubun(r.id)}&id=${r.id}`;
               //location.href = `document_edit.html?id=${r.id}`;
             });
           }
