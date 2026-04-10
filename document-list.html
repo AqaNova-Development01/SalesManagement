@@ -122,32 +122,47 @@
         }
       
         try {
-          let rpcName = null;
+          let endpoint = null;
           let label = "";
       
           if (kubun === "MT") {
-            rpcName = "mf_send_quote";
+            endpoint = "mf_send_quote";
             label = "見積書";
           } else if (kubun === "DL") {
-            rpcName = "mf_send_delivery";
+            endpoint = "mf_send_delivery";
             label = "納品書";
           } else if (kubun === "PO") {
-            rpcName = "mf_send_purchase_order";
+            endpoint = "mf_send_purchase_order";
             label = "発注書";
           } else if (kubun === "SE") {
-            rpcName = "mf_send_invoice";
+            endpoint = "mf_send_invoice";
             label = "請求書";
           } else {
             alert("不明な区分です");
             return;
           }
       
-          const { data, error } = await supabase.rpc(rpcName, {
-            p_document_id: id
+          // Edge Function URL
+          const url = `https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/${endpoint}`;
+      
+          // anon key を取得
+          const supabaseAnonKey = supabase._headers["apikey"];
+      
+          // Edge Function 呼び出し
+          const res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": supabaseAnonKey,
+              "Authorization": `Bearer ${supabaseAnonKey}`
+            },
+            body: JSON.stringify({ document_id: id })
           });
       
-          if (error) {
-            alert(`${label}連携エラー: ${error.message}`);
+          const json = await res.json().catch(() => ({}));
+      
+          if (!res.ok) {
+            alert(`${label}連携エラー: ${JSON.stringify(json)}`);
             return;
           }
       
