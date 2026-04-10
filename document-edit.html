@@ -44,6 +44,7 @@
         // 編集モード
         document.getElementById("title_page").innerText = "見積書 編集";
         await loadExistingDocument(docId);
+        await loadItemMaster();
       } else {
         // 新規作成モード
         setDefaultHeader();
