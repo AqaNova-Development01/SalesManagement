@@ -106,6 +106,67 @@
         return;
       }
 
+      // --- 区分判定 ---
+      function getKubun(id) {
+        return id.substring(0, 2);
+      }
+
+      window.sendMF = async function(id, btnEl = null) {
+        const kubun = getKubun(id);
+      
+        // UI制御
+        if (btnEl) {
+          btnEl.disabled = true;
+          btnEl.dataset.originalText = btnEl.textContent;
+          btnEl.textContent = "送信中...";
+        }
+      
+        try {
+          let rpcName = null;
+          let label = "";
+      
+          if (kubun === "MT") {
+            rpcName = "mf_send_quote";
+            label = "見積書";
+          } else if (kubun === "DL") {
+            rpcName = "mf_send_delivery";
+            label = "納品書";
+          } else if (kubun === "PO") {
+            rpcName = "mf_send_purchase_order";
+            label = "発注書";
+          } else if (kubun === "SE") {
+            rpcName = "mf_send_invoice";
+            label = "請求書";
+          } else {
+            alert("不明な区分です");
+            return;
+          }
+      
+          const { data, error } = await supabase.rpc(rpcName, {
+            p_document_id: id
+          });
+      
+          if (error) {
+            alert(`${label}連携エラー: ${error.message}`);
+            return;
+          }
+      
+          alert(`${label}をMFへ連携しました`);
+      
+          // 再検索で画面更新
+          await search();
+      
+        } catch (e) {
+          console.error(e);
+          alert("通信エラーが発生しました");
+        } finally {
+          if (btnEl) {
+            btnEl.textContent = btnEl.dataset.originalText || "MF連携";
+            btnEl.disabled = false;
+          }
+        }
+      };
+
       // --- 初期化関数群 ---
       function initYearMonth() {
         const now = new Date();
@@ -256,7 +317,11 @@
             btnEdit.disabled = true;
           } else {
             btnEdit.addEventListener('click', () => {
-              location.href = `document_edit.html?id=${r.id}`;
+              window.editDoc = function(id) {
+                const kubun = getKubun(id);
+                location.href = `document_edit.html?kubun=${kubun}&id=${id}`;
+              };
+              //location.href = `document_edit.html?id=${r.id}`;
             });
           }
           ops.appendChild(btnEdit);
@@ -272,64 +337,7 @@
           } else {
             btnMf.addEventListener('click', async () => {
               if (!confirm('この帳票をMFクラウドへ送信しますか？')) return;
-          
-              // セッション（最新トークン）を取得
-              const { data: sessionData } = await supabase.auth.getSession();
-              const accessToken = sessionData?.session?.access_token;
-              if (!accessToken) {
-                alert('ログインが必要です。再ログインしてください。');
-                return;
-              }
-          
-              // UI: 二重送信防止
-              btnMf.disabled = true;
-              const originalText = btnMf.textContent;
-              btnMf.textContent = '送信中...';
-          
-              try {
-                const res = await fetch(
-                  'https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/mf_send_invoice',
-                  {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${accessToken}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ document_id: r.id }),
-                  }
-                );
-          
-                // ネットワークエラー等で fetch が失敗するとここに来る
-                const json = await res.json().catch(() => ({ error: 'Invalid JSON response' }));
-          
-                if (!res.ok) {
-                  // 401 は再認証を促す
-                  if (res.status === 401) {
-                    alert('認証エラーです。再ログインしてください。');
-                  } else {
-                    alert('MF連携エラー: ' + (json?.error || JSON.stringify(json)));
-                  }
-                  return;
-                }
-          
-                // 成功時: サーバが返すキー名に合わせる（mf_document_id を期待）
-                const mfId = json?.mf_document_id ?? json?.mf_invoice_id ?? json?.mfId ?? null;
-                if (!mfId) {
-                  alert('MF連携は成功しましたが、MF側IDが返りませんでした: ' + JSON.stringify(json));
-                } else {
-                  alert('MF連携成功！ MF側ID: ' + mfId);
-                }
-          
-                // 画面更新（再検索）
-                await search();
-              } catch (e) {
-                console.error('MF連携通信エラー', e);
-                alert('通信エラーが発生しました。コンソールを確認してください。');
-              } finally {
-                // UI 復帰（MF済なら disabled のまま）
-                btnMf.textContent = originalText;
-                btnMf.disabled = !!r.mf_document_id || r.cancel_flag == 1;
-              }
+              await window.sendMF(r.id, btnMf);
             });
           }
           ops.appendChild(btnMf);
