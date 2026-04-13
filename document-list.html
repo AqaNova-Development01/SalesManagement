@@ -153,15 +153,11 @@
           // Edge Function URL
           const url = `https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/${endpoint}`;
       
-          // anon key を取得
-          const supabaseAnonKey = supabase._headers["apikey"];
-      
           // Edge Function 呼び出し
           const res = await fetch(url, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "apikey": supabaseAnonKey,
               "Authorization": `Bearer ${accessToken}`
             },
             body: JSON.stringify({ document_id: id })
