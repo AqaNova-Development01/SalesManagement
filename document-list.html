@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>帳票一覧（修正版）</title>
+  <title>帳票一覧（完全版）</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP"; padding:16px; max-width:1100px; margin:auto; }
@@ -14,10 +14,9 @@
     th, td { border:1px solid #e0e0e0; padding:8px; text-align:left; }
     th { background:#f5f5f5; }
     tr.cancelled { background:#fff0f0; color:#6b6b6b; }
-    .actions { display:flex; gap:8px; }
-    .cancel-btn { background:#c82333; color:#fff; border:none; padding:6px 8px; border-radius:4px; }
-    .cancel-btn[disabled] { opacity:0.6; cursor:not-allowed; }
     .small { font-size:13px; color:#666; }
+    .bottom-actions { margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .bottom-actions-right { margin-left:auto; display:flex; gap:8px; }
   </style>
 </head>
 <body>
@@ -37,7 +36,7 @@
 
     <div>
       <label for="kubun">区分</label>
-      <select id="kubun">
+      <select id="kubun" disabled>
         <option value="ALL">全て</option>
         <option value="MT">見積 (MT)</option>
         <option value="SE">請求 (SE)</option>
@@ -53,6 +52,11 @@
       <input id="torihikisaki_id" type="hidden" />
     </div>
 
+    <div>
+      <label for="freeword">フリーワード</label>
+      <input id="freeword" type="text" placeholder="ID / タイトル / 発行日 / 取引先" />
+    </div>
+
     <div style="margin-left:auto;">
       <button id="btnSearch">検索</button>
       <button id="btnClear">クリア</button>
@@ -62,7 +66,7 @@
   <table aria-label="帳票一覧">
     <thead>
       <tr>
-        <th style="width:160px">操作</th>
+        <th style="width:40px">選択</th>
         <th>ID</th>
         <th>発行日</th>
         <th>取引先</th>
@@ -74,12 +78,26 @@
     <tbody id="tbody"></tbody>
   </table>
 
-  <div style="margin-top:12px;">
-    <button onclick="location.href='index.html'">メニューへ</button>
-    <span class="small" style="margin-left:12px;">※区分はメニューから渡された初期値を優先します。画面上で切替可能。</span>
+  <div class="bottom-actions">
+    <div>
+      <span class="small">※1 行選択して操作してください</span>
+    </div>
+    <div class="bottom-actions-right">
+      <button id="btnView">参照</button>
+      <button id="btnEdit">編集</button>
+      <button id="btnMf">MF連携</button>
+      <button id="btnCancelDoc">取消</button>
+      <button id="btnUrKake">売掛登録</button>
+      <button id="btnKiKake">買掛登録</button>
+      <button onclick="location.href='index.html'">メニューへ</button>
+    </div>
   </div>
 
-  <!-- Supabase 初期化（module） -->
+  <div style="margin-top:8px;">
+    <span class="small">※区分はメニューから渡された初期値を固定します（画面上での切替は無効）。</span>
+  </div>
+
+  <!-- Supabase 初期化 -->
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -96,97 +114,115 @@
 
     window.showError = (msg) => { alert('エラー: ' + msg); console.error(msg); };
 
-    // ページ固有ロジックは DOMContentLoaded 内で実行
+    function getKubun(id) {
+      return id.substring(0, 2);
+    }
+
+    // Edge Function 呼び出し（MF連携）
+    window.sendMF = async function(id) {
+      const kubun = getKubun(id);
+
+      try {
+        let endpoint = null;
+        let label = "";
+
+        if (kubun === "MT") {
+          endpoint = "mf_send_quote";
+          label = "見積書";
+        } else if (kubun === "DL") {
+          endpoint = "mf_send_delivery";
+          label = "納品書";
+        } else if (kubun === "PO") {
+          endpoint = "mf_send_purchase_order";
+          label = "発注書";
+        } else if (kubun === "SE") {
+          endpoint = "mf_send_invoice";
+          label = "請求書";
+        } else {
+          alert("不明な区分です");
+          return;
+        }
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) {
+          alert("ログインが必要です。再ログインしてください。");
+          return;
+        }
+
+        const url = `${SUPABASE_URL}/functions/v1/${endpoint}`;
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ document_id: id })
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          alert(`${label}連携エラー: ${JSON.stringify(json)}`);
+          return;
+        }
+
+        alert(`${label}をMFへ連携しました`);
+        await search();
+
+      } catch (e) {
+        console.error(e);
+        alert("通信エラーが発生しました");
+      }
+    };
+
+    // 選択行の情報取得
+    function getSelectedRowData() {
+      const checked = document.querySelector('input[name="selectedDoc"]:checked');
+      if (!checked) return null;
+      const tr = checked.closest('tr');
+      if (!tr) return null;
+      return {
+        id: tr.dataset.id,
+        kubun: tr.dataset.kubun,
+        cancelFlag: Number(tr.dataset.cancelFlag || 0),
+        mfDocumentId: tr.dataset.mfDocumentId || null,
+        torihikisakiId: tr.dataset.torihikisakiId || null
+      };
+    }
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
     window.addEventListener('DOMContentLoaded', async () => {
-      // --- ログインチェック（最優先） ---
       const session = await window.getSession();
       if (!session) {
-        // 未ログインならログイン画面へ
         window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
         return;
       }
 
-      // --- 区分判定 ---
-      function getKubun(id) {
-        return id.substring(0, 2);
-      }
+      // URL パラメータ処理
+      const params = new URLSearchParams(location.search);
+      const initialKubun = params.get('kubun') || 'ALL';
+      const kubunEl = document.getElementById('kubun');
+      kubunEl.value = initialKubun;
+      kubunEl.disabled = true;
 
-      window.sendMF = async function(id, btnEl = null) {
-        const kubun = getKubun(id);
-      
-        // UI制御
-        if (btnEl) {
-          btnEl.disabled = true;
-          btnEl.dataset.originalText = btnEl.textContent;
-          btnEl.textContent = "送信中...";
-        }
-      
-        try {
-          let endpoint = null;
-          let label = "";
-      
-          if (kubun === "MT") {
-            endpoint = "mf_send_quote";
-            label = "見積書";
-          } else if (kubun === "DL") {
-            endpoint = "mf_send_delivery";
-            label = "納品書";
-          } else if (kubun === "PO") {
-            endpoint = "mf_send_purchase_order";
-            label = "発注書";
-          } else if (kubun === "SE") {
-            endpoint = "mf_send_invoice";
-            label = "請求書";
-          } else {
-            alert("不明な区分です");
-            return;
-          }
-      
-      
-          const { data: sessionData } = await supabase.auth.getSession();
-          const accessToken = sessionData?.session?.access_token;
-          if (!accessToken) {
-            alert("ログインが必要です。再ログインしてください。");
-            return;
-          }
-
-          // Edge Function URL
-          const url = `https://omzcbfjtwyygvvgxsiov.supabase.co/functions/v1/${endpoint}`;
-      
-          // Edge Function 呼び出し
-          const res = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({ document_id: id })
-          });
-      
-          const json = await res.json().catch(() => ({}));
-      
-          if (!res.ok) {
-            alert(`${label}連携エラー: ${JSON.stringify(json)}`);
-            return;
-          }
-      
-          alert(`${label}をMFへ連携しました`);
-      
-          // 再検索で画面更新
-          await search();
-      
-        } catch (e) {
-          console.error(e);
-          alert("通信エラーが発生しました");
-        } finally {
-          if (btnEl) {
-            btnEl.textContent = btnEl.dataset.originalText || "MF連携";
-            btnEl.disabled = false;
+      // 取引先名 → ID
+      document.getElementById('torihikisaki_name').addEventListener('input', () => {
+        const name = document.getElementById('torihikisaki_name').value;
+        const opts = document.getElementById('torihikisaki_list').options;
+        document.getElementById('torihikisaki_id').value = '';
+        for (let i=0;i<opts.length;i++){
+          if (opts[i].value === name) {
+            document.getElementById('torihikisaki_id').value = opts[i].dataset.id;
+            break;
           }
         }
-      };
+      });
 
-      // --- 初期化関数群 ---
+      // 年月初期化
       function initYearMonth() {
         const now = new Date();
         const year = now.getFullYear();
@@ -212,6 +248,7 @@
         }
       }
 
+      // 取引先一覧
       async function loadTorihikisakiList() {
         const { data, error } = await supabase.from('torihikisaki').select('id,name').order('name');
         if (error) { console.error(error); return; }
@@ -225,93 +262,63 @@
         });
       }
 
-      // 取引先名入力で id をセット
-      document.getElementById('torihikisaki_name').addEventListener('input', () => {
-        const name = document.getElementById('torihikisaki_name').value;
-        const opts = document.getElementById('torihikisaki_list').options;
-        document.getElementById('torihikisaki_id').value = '';
-        for (let i=0;i<opts.length;i++){
-          if (opts[i].value === name) {
-            document.getElementById('torihikisaki_id').value = opts[i].dataset.id;
-            break;
-          }
-        }
-      });
-
-      // URL パラメータ処理（from, kubun 初期値）
-      const params = new URLSearchParams(location.search);
-      const from = params.get('from') || 'menu';
-      const initialKubun = params.get('kubun') || 'ALL';
-      document.getElementById('kubun').value = initialKubun;
-
+      // ----------------------------
       // 検索処理
+      // ----------------------------
       async function search() {
-        // DOM から年/月を確実に取得する
-        const yearEl = document.getElementById('year');
-        const monthEl = document.getElementById('month');
-        const kubunEl = document.getElementById('kubun');
-      
-        if (!yearEl || !monthEl || !kubunEl) {
-          console.error('year/month/kubun 要素が見つかりません');
-          return;
-        }
-      
-        const yearStr = yearEl.value;   // '2026'
-        const monthStr = monthEl.value; // '01' または '1'
-        const year = Number(yearStr);
-        const month = Number(monthStr); // 1..12
-      
-        if (!year || !month || month < 1 || month > 12) {
-          console.warn('年または月の値が不正です:', { yearStr, monthStr });
-        }
-      
-        // UTC ベースで start と end を作る（end は次月の1日、排他的）
-        const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0,10); // 2026-01-01
-        const endDate   = new Date(Date.UTC(year, month, 1)).toISOString().slice(0,10);     // 2026-02-01
-      
-        const kubun = kubunEl.value || 'ALL';
-        const torihikisaki_id = document.getElementById('torihikisaki_id')?.value || null;
-      
+        const year = Number(document.getElementById('year').value);
+        const month = Number(document.getElementById('month').value);
+        const kubun = document.getElementById('kubun').value;
+        const torihikisaki_id = document.getElementById('torihikisaki_id').value || null;
+        const freeword = document.getElementById('freeword').value.trim();
+
+        const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0,10);
+        const endDate   = new Date(Date.UTC(year, month, 1)).toISOString().slice(0,10);
+
         try {
           let query = supabase.from('document').select(`
             id, document_date, torihikisaki_id, title, total, cancel_flag,
             mf_document_id, torihikisaki(name)
           `);
-      
-          // 年月絞り（document_date >= startDate AND document_date < endDate）
-          if (year && month) {
-            query = query.gte('document_date', startDate).lt('document_date', endDate);
-          }
-      
-          // kubun 絞り（ALL 以外は id の先頭で絞る）
-          if (kubun && kubun !== 'ALL') {
+
+          query = query.gte('document_date', startDate).lt('document_date', endDate);
+
+          if (kubun !== 'ALL') {
             query = query.ilike('id', `${kubun}%`);
           }
-      
-          // 取引先絞り
+
           if (torihikisaki_id) {
             query = query.eq('torihikisaki_id', torihikisaki_id);
           }
-      
-          // 並び順
+
+          if (freeword) {
+            const esc = freeword.replace(/%/g, '\\%').replace(/_/g, '\\_');
+            query = query.or(
+              `id.ilike.%${esc}%,title.ilike.%${esc}%,torihikisaki.name.ilike.%${esc}%,document_date.ilike.%${esc}%`
+            );
+          }
+
           query = query.order('document_date', { ascending: false }).order('id', { ascending: false });
-      
+
           const { data, error } = await query;
           if (error) {
-            window.showError(error.message || JSON.stringify(error));
+            window.showError(error.message);
             return;
           }
-      
+
           renderTable(data || []);
         } catch (e) {
-          window.showError(e.message || e);
+          window.showError(e.message);
         }
       }
 
+      // ----------------------------
       // テーブル描画
+      // ----------------------------
       function renderTable(rows) {
         const tbody = document.getElementById('tbody');
         tbody.innerHTML = '';
+
         if (!rows.length) {
           const tr = document.createElement('tr');
           tr.innerHTML = `<td colspan="7">該当データがありません</td>`;
@@ -321,122 +328,198 @@
 
         rows.forEach(r => {
           const tr = document.createElement('tr');
-          if (r.cancel_flag === 1 || r.cancel_flag === '1') tr.classList.add('cancelled');
+          if (r.cancel_flag == 1) tr.classList.add('cancelled');
 
-          // 操作ボタン群
-          const ops = document.createElement('td');
-          ops.className = 'actions';
-          
-          // --- 編集ボタン ---
-          const btnEdit = document.createElement('button');
-          btnEdit.textContent = '編集';
-          
-          // 編集不可条件：取消済 or MF連携済
-          if (r.cancel_flag == 1 || r.mf_document_id) {
-            btnEdit.disabled = true;
-          } else {
-            btnEdit.addEventListener('click', () => {
-              location.href = `document-edit.html?kubun=${getKubun(r.id)}&id=${r.id}`;
-              //location.href = `document-edit.html?id=${r.id}`;
-            });
-          }
-          ops.appendChild(btnEdit);
-          
-          // --- MF連携ボタン ---
-          const btnMf = document.createElement('button');
-          btnMf.textContent = r.mf_document_id ? 'MF済' : 'MF連携';
-          
-          // MF不可条件：取消済 or MF済
-          // --- MF連携ボタンの安全なハンドラ（差し替え） ---
-          if (r.cancel_flag == 1 || r.mf_document_id) {
-            btnMf.disabled = true;
-          } else {
-            btnMf.addEventListener('click', async () => {
-              if (!confirm('この帳票をMFクラウドへ送信しますか？')) return;
-              await window.sendMF(r.id, btnMf);
-            });
-          }
-          ops.appendChild(btnMf);
-          
-          // --- 取消ボタン ---
-          const btnCancel = document.createElement('button');
-          btnCancel.textContent = r.cancel_flag == 1 ? '取消済' : '取消';
-          btnCancel.className = 'cancel-btn';
-          
-          if (r.cancel_flag == 1) {
-            btnCancel.disabled = true;
-            // ★ 将来「取消取り下げ」ボタンをここに追加できる
-          } else {
-            btnCancel.addEventListener('click', async (ev) => {
-              ev.stopPropagation();
-              await cancelDocument(r.id, btnCancel);
-            });
-          }
-          ops.appendChild(btnCancel);
-          
-          tr.appendChild(ops);
+          tr.dataset.id = r.id;
+          tr.dataset.kubun = getKubun(r.id);
+          tr.dataset.cancelFlag = r.cancel_flag ?? 0;
+          tr.dataset.mfDocumentId = r.mf_document_id || '';
+          tr.dataset.torihikisakiId = r.torihikisaki_id || '';
 
-          const tdId = document.createElement('td'); tdId.textContent = r.id; tr.appendChild(tdId);
-          const tdDate = document.createElement('td'); tdDate.textContent = r.document_date ? r.document_date.slice(0,10) : ''; tr.appendChild(tdDate);
-          const tdTorihiki = document.createElement('td'); tdTorihiki.textContent = r.torihikisaki?.name || ''; tr.appendChild(tdTorihiki);
-          const tdTitle = document.createElement('td'); tdTitle.textContent = r.title || ''; tr.appendChild(tdTitle);
-          const tdTotal = document.createElement('td'); tdTotal.style.textAlign = 'right'; tdTotal.textContent = r.total ?? ''; tr.appendChild(tdTotal);
-          const tdCancel = document.createElement('td'); tdCancel.textContent = r.cancel_flag == 1 ? 'はい' : 'いいえ'; tr.appendChild(tdCancel);
+          const tdSel = document.createElement('td');
+          tdSel.style.textAlign = 'center';
+          tdSel.innerHTML = `<input type="radio" name="selectedDoc" value="${r.id}">`;
+          tr.appendChild(tdSel);
+
+          tr.innerHTML += `
+            <td>${r.id}</td>
+            <td>${r.document_date?.slice(0,10) || ''}</td>
+            <td>${r.torihikisaki?.name || ''}</td>
+            <td>${r.title || ''}</td>
+            <td style="text-align:right">${r.total ?? ''}</td>
+            <td>${r.cancel_flag == 1 ? 'はい' : 'いいえ'}</td>
+          `;
 
           tbody.appendChild(tr);
         });
       }
 
-      // cancel RPC 呼び出し
-      async function cancelDocument(docId, buttonEl = null) {
+      // ----------------------------
+      // 取消処理
+      // ----------------------------
+      async function cancelDocument(docId) {
         if (!confirm('この帳票を取消しますか？')) return;
-        const session = await window.getSession();
-        if (!session) { window.showError('未認証です。ログインしてください。'); return; }
 
-        try {
-          if (buttonEl) { buttonEl.disabled = true; const prev = buttonEl.textContent; buttonEl.textContent = '取消中...'; }
-          const { data, error } = await supabase.rpc('rpc_document_cancel', { p_document_id: docId });
-          if (error) { window.showError(error.message); if (buttonEl) { buttonEl.disabled = false; buttonEl.textContent = '取消'; } return; }
-          if (!data?.ok) { window.showError(data?.error || '取消に失敗しました'); if (buttonEl) { buttonEl.disabled = false; buttonEl.textContent = '取消'; } return; }
-          alert(`取消しました（${data.document_id}）。関連掛金更新: ${data.kakekin_updated}`);
-          await search();
-        } catch (e) {
-          window.showError(e.message || e);
+        const { data, error } = await supabase.rpc('rpc_document_cancel', {
+          p_document_id: docId
+        });
+
+        if (error) {
+          window.showError(error.message);
+          return;
         }
+
+        alert(`取消しました（${data.document_id}）`);
+        await search();
       }
 
-      // イベント登録
+      // ----------------------------
+      // 掛金登録（明細ごとに採番）
+      // ----------------------------
+      async function registerKakekin(docId, kbn) {
+        const session = await window.getSession();
+        if (!session) { window.showError('未認証です'); return; }
+        const uid = session.user.id;
+
+        const { data: doc } = await supabase
+          .from('document')
+          .select('id, torihikisaki_id, title')
+          .eq('id', docId)
+          .single();
+
+        const { data: details } = await supabase
+          .from('document_detail')
+          .select('hinmoku_id, item, quantity, unit, price, amount, tax_rate')
+          .eq('document_id', docId)
+          .order('id');
+
+        if (!details || !details.length) {
+          window.showError('明細がありません');
+          return;
+        }
+
+        const today = new Date().toISOString().slice(0,10);
+
+        for (const d of details) {
+          const { data: newId, error: seqErr } = await supabase.rpc(
+            'get_next_document_code',
+            { prefix: kbn, p_date: today }
+          );
+          if (seqErr) {
+            window.showError('採番エラー: ' + seqErr.message);
+            return;
+          }
+
+          const row = {
+            id: newId,
+            kake_kbn: kbn,
+            torihikisaki_id: doc.torihikisaki_id,
+
+            ship_date: today,
+            delivery_date: today,
+            keijo_date: today,
+
+            hinmoku_id: d.hinmoku_id,
+            item: d.item,
+            quantity: d.quantity,
+            unit: d.unit,
+            price: d.price,
+            amount: d.amount,
+            tax_rate: d.tax_rate,
+
+            mitsumori_no: (kbn === 'UR' ? doc.id : null),
+            nouhin_no:   (kbn === 'KI' ? doc.id : null),
+
+            memo: doc.title || '',
+            invoice_check: 0,
+
+            created_by: uid,
+            updated_by: uid
+          };
+
+          const { error: insErr } = await supabase.from('kakekin').insert(row);
+          if (insErr) {
+            window.showError(insErr.message);
+            return;
+          }
+        }
+
+        alert(`掛金を登録しました（${kbn === 'UR' ? '売掛' : '買掛'} / ${details.length}件）`);
+      }
+
+      // ----------------------------
+      // ボタンイベント
+      // ----------------------------
       document.getElementById('btnSearch').addEventListener('click', search);
+
       document.getElementById('btnClear').addEventListener('click', () => {
         document.getElementById('torihikisaki_name').value = '';
         document.getElementById('torihikisaki_id').value = '';
+        document.getElementById('freeword').value = '';
         initYearMonth();
-        document.getElementById('kubun').value = initialKubun;
         search();
       });
 
-      // 初期処理
+      document.getElementById('btnView').addEventListener('click', () => {
+        const row = getSelectedRowData();
+        if (!row) return alert('行を選択してください');
+        location.href = `document-edit.html?kubun=${row.kubun}&id=${row.id}&mode=view`;
+      });
+
+      document.getElementById('btnEdit').addEventListener('click', () => {
+        const row = getSelectedRowData();
+        if (!row) return alert('行を選択してください');
+        if (row.cancelFlag == 1 || row.mfDocumentId) {
+          return alert('取消済またはMF連携済の帳票は編集できません');
+        }
+        location.href = `document-edit.html?kubun=${row.kubun}&id=${row.id}&mode=edit`;
+      });
+
+      document.getElementById('btnMf').addEventListener('click', async () => {
+        const row = getSelectedRowData();
+        if (!row) return alert('行を選択してください');
+        if (row.cancelFlag == 1) return alert('取消済の帳票はMF連携できません');
+        if (row.mfDocumentId) return alert('すでにMF連携済です');
+        if (!confirm('MFクラウドへ送信しますか？')) return;
+        await window.sendMF(row.id);
+      });
+
+      document.getElementById('btnCancelDoc').addEventListener('click', async () => {
+        const row = getSelectedRowData();
+        if (!row) return alert('行を選択してください');
+        if (row.cancelFlag == 1) return alert('すでに取消済です');
+        await cancelDocument(row.id);
+      });
+
+      document.getElementById('btnUrKake').addEventListener('click', async () => {
+        const row = getSelectedRowData();
+        if (!row) return alert('行を選択してください');
+        if (row.kubun !== 'MT' && row.kubun !== 'DL') {
+          return alert('売掛登録は見積(MT)または納品(DL)のみです');
+        }
+        if (!confirm('売掛登録しますか？')) return;
+        await registerKakekin(row.id, 'UR');
+      });
+
+      document.getElementById('btnKiKake').addEventListener('click', async () => {
+        const row = getSelectedRowData();
+        if (!row) return alert('行を選択してください');
+        if (row.kubun !== 'PO') {
+          return alert('買掛登録は発注(PO)のみです');
+        }
+        if (!confirm('買掛登録しますか？')) return;
+        await registerKakekin(row.id, 'KI');
+      });
+
+      // ----------------------------
+      // 初期ロード
+      // ----------------------------
       initYearMonth();
       await loadTorihikisakiList();
-
-      // URL で取引先IDが渡されている場合は固定
-      const torihikisaki_from = params.get('torihikisaki_id');
-      if (torihikisaki_from) {
-        document.getElementById('torihikisaki_id').value = torihikisaki_from;
-        const { data } = await supabase.from('torihikisaki').select('name').eq('id', torihikisaki_from).single();
-        if (data) {
-          document.getElementById('torihikisaki_name').value = data.name;
-          document.getElementById('torihikisaki_name').readOnly = true;
-        }
-      }
-
-      // 最初の検索
       await search();
 
-      // テスト用エクスポート
       window.search = search;
-      window.cancelDocument = cancelDocument;
-    }); // DOMContentLoaded end
+    });
   </script>
 </body>
 </html>
