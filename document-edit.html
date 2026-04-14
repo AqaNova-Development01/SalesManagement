@@ -18,6 +18,7 @@
     const params = new URLSearchParams(window.location.search);
     const kubun = params.get("kubun");   // MT / DL / PO
     const docId = params.get("id");      // 編集時のみ
+    const mode = params.get("mode") || "edit"; // ← view / edit
 
     // ----------------------------
     // ログインチェック
@@ -53,7 +54,36 @@
           await loadItemMaster();
         }
       }
+
+      // ★ view モードなら読み取り専用にする
+      if (mode === "view") {
+        setReadOnlyMode();
+      }
     });
+
+    // ----------------------------
+    // view モード設定
+    // ----------------------------
+    function setReadOnlyMode() {
+      // すべての input / textarea / select / button を無効化
+      document.querySelectorAll("input, textarea, select, button").forEach(el => {
+        if (el.id === "back_button") return; // 戻るボタンだけ有効
+        el.disabled = true;
+      });
+
+      // 品目TBLを非表示
+      const itemList = document.getElementById("item_list");
+      if (itemList) itemList.style.display = "none";
+
+      // 明細削除ボタンを非表示
+      document.querySelectorAll("#detail_body button").forEach(btn => {
+        btn.style.display = "none";
+      });
+
+      // タイトルに（参照）を付ける
+      const title = document.getElementById("title_page");
+      title.textContent += "（参照）";
+    }
 
     // ----------------------------
     // 取引先一覧
@@ -151,6 +181,8 @@
     // 品目TBL（税率も取得）
     // ----------------------------
     async function loadItemMaster() {
+      if (mode === "view") return; // view モードでは不要
+
       const { data, error } = await supabase
         .from("hinmoku")
         .select("id, name, price, unit, tax_rate")
@@ -228,6 +260,8 @@
     // 保存処理（新規 or 更新）
     // ----------------------------
     window.saveDocument = async function() {
+      if (mode === "view") return; // view モードでは保存不可
+
       if (kubun !== "MT") {
         alert("未対応の区分です");
         return;
@@ -344,7 +378,7 @@
     }
 
     // ----------------------------
-    // 明細収集
+    // 明細収集（hinmoku_id 対応）
     // ----------------------------
     function collectDetails() {
       const details = [];
@@ -352,11 +386,12 @@
         const item = tr.children[0].children[0].value;
         const qty = Number(tr.children[1].children[0].value.replace(/,/g, ""));
         const price = Number(tr.children[2].children[0].value.replace(/,/g, ""));
-        const amount = qty * price;
+        const amount = Number(tr.querySelector(".amount").textContent.replace(/,/g, ""));
         const unit = tr.children[4].children[0].value;
         const tax_rate = Number(tr.children[5].children[0].value);
+        const hinmoku_id = tr.dataset.hinmokuId || null;
 
-        details.push({ item, qty, price, amount, unit, tax_rate });
+        details.push({ item, qty, price, amount, unit, tax_rate, hinmoku_id });
       });
       return details;
     }
@@ -374,6 +409,7 @@
         await supabase.from("document_detail").insert({
           id: detId,
           document_id: docId,
+          hinmoku_id: d.hinmoku_id,   // ← 追加
           item: d.item,
           quantity: d.qty,
           price: d.price,
@@ -449,7 +485,7 @@
 <h3>合計: <span id="total">0</span> 円</h3>
 
 <button onclick="saveDocument()">保存</button>
-<button onclick="location.href='index.html'">メニューへ</button>
+<button id="back_button" onclick="location.href='index.html'">メニューへ</button>
 
 </body>
 </html>
