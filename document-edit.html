@@ -348,12 +348,6 @@
         alert("明細がありません");
         return;
       }
-console.log({
-  torihikisaki_id,
-  document_date,
-  title,
-  memo
-});
 
       // document 更新
       const { error: docErr } = await supabase
@@ -364,15 +358,20 @@ console.log({
           title,
           total: details.reduce((s, d) => s + d.amount, 0),
           memo,
-          updated_by: uid
+          updated_by: uid,
+          updated_at: new Date()
         })
-        .eq("id", id);
+        .eq("id", id)
+        .select();
 
       if (docErr) {
         alert("ヘッダ更新エラー: " + docErr.message);
         return;
       }
-
+      if (!data || data.length === 0) {
+        alert("更新対象が存在しません");
+        return;
+      }
       // 既存明細削除
       await supabase.from("document_detail").delete().eq("document_id", id);
 
@@ -380,7 +379,7 @@ console.log({
       await insertDetails(id, details, uid);
 
       alert("見積書を更新しました");
-      // location.href = "document-list.html?f=MT";
+      location.href = "document-list.html?f=MT";
     }
 
     // ----------------------------
