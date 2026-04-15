@@ -348,6 +348,12 @@
         alert("明細がありません");
         return;
       }
+console.log({
+  torihikisaki_id,
+  document_date,
+  title,
+  memo
+});
 
       // document 更新
       const { error: docErr } = await supabase
