@@ -350,7 +350,7 @@
       }
 
       // document 更新
-      const { error: docErr } = await supabase
+      const { data, error: docErr } = await supabase
         .from("document")
         .update({
           torihikisaki_id,
