@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>帳票一覧（完全版）</title>
+  <title>帳票一覧（完全版2）</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP"; padding:16px; max-width:1100px; margin:auto; }
@@ -14,6 +14,7 @@
     th, td { border:1px solid #e0e0e0; padding:8px; text-align:left; }
     th { background:#f5f5f5; }
     tr.cancelled { background:#fff0f0; color:#6b6b6b; }
+    tr:hover { background:#eef7ff; cursor:pointer; }
     .small { font-size:13px; color:#666; }
     .bottom-actions { margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .bottom-actions-right { margin-left:auto; display:flex; gap:8px; }
@@ -72,6 +73,7 @@
         <th>取引先</th>
         <th>タイトル</th>
         <th style="text-align:right">合計</th>
+        <th>MF連携</th>
         <th>取消</th>
       </tr>
     </thead>
@@ -105,7 +107,6 @@
     const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    window.supabase = supabase;
 
     window.getSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -118,98 +119,86 @@
       return id.substring(0, 2);
     }
 
-    // Edge Function 呼び出し（MF連携）
+    /* ============================
+       MF連携
+       ============================ */
     window.sendMF = async function(id) {
       const kubun = getKubun(id);
 
-      try {
-        let endpoint = null;
-        let label = "";
+      let endpoint = null;
+      let label = "";
 
-        if (kubun === "MT") {
-          endpoint = "mf_send_quote";
-          label = "見積書";
-        } else if (kubun === "DL") {
-          endpoint = "mf_send_delivery";
-          label = "納品書";
-        } else if (kubun === "PO") {
-          endpoint = "mf_send_purchase_order";
-          label = "発注書";
-        } else if (kubun === "SE") {
-          endpoint = "mf_send_invoice";
-          label = "請求書";
-        } else {
-          alert("不明な区分です");
-          return;
-        }
+      if (kubun === "MT") { endpoint = "mf_send_quote"; label = "見積書"; }
+      else if (kubun === "DL") { endpoint = "mf_send_delivery"; label = "納品書"; }
+      else if (kubun === "PO") { endpoint = "mf_send_purchase_order"; label = "発注書"; }
+      else if (kubun === "SE") { endpoint = "mf_send_invoice"; label = "請求書"; }
+      else { alert("不明な区分です"); return; }
 
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token;
-        if (!accessToken) {
-          alert("ログインが必要です。再ログインしてください。");
-          return;
-        }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) return alert("ログインが必要です");
 
-        const url = `${SUPABASE_URL}/functions/v1/${endpoint}`;
+      const url = `${SUPABASE_URL}/functions/v1/${endpoint}`;
 
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`
-          },
-          body: JSON.stringify({ document_id: id })
-        });
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ document_id: id })
+      });
 
-        const json = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
 
-        if (!res.ok) {
-          alert(`${label}連携エラー: ${JSON.stringify(json)}`);
-          return;
-        }
-
-        alert(`${label}をMFへ連携しました`);
-        await search();
-
-      } catch (e) {
-        console.error(e);
-        alert("通信エラーが発生しました");
+      if (!res.ok) {
+        alert(`${label}連携エラー: ${JSON.stringify(json)}`);
+        return;
       }
+
+      alert(`${label}をMFへ連携しました`);
+      await search();
     };
 
-    // 選択行の情報取得
+    /* ============================
+       行選択
+       ============================ */
     function getSelectedRowData() {
       const checked = document.querySelector('input[name="selectedDoc"]:checked');
       if (!checked) return null;
       const tr = checked.closest('tr');
-      if (!tr) return null;
       return {
         id: tr.dataset.id,
         kubun: tr.dataset.kubun,
         cancelFlag: Number(tr.dataset.cancelFlag || 0),
-        mfDocumentId: tr.dataset.mfDocumentId || null,
-        torihikisakiId: tr.dataset.torihikisakiId || null
+        mfDocumentId: tr.dataset.mfDocumentId || null
       };
     }
 
-    // ----------------------------
-    // 初期処理
-    // ----------------------------
+    function updateActionButtons(row) {
+      document.getElementById('btnEdit').disabled = (row.cancelFlag == 1 || row.mfDocumentId);
+      document.getElementById('btnMf').disabled = (row.cancelFlag == 1 || row.mfDocumentId);
+      document.getElementById('btnCancelDoc').disabled = (row.cancelFlag == 1);
+
+      document.getElementById('btnUrKake').disabled = !(row.kubun === 'MT');
+      document.getElementById('btnKiKake').disabled = !(row.kubun === 'PO');
+    }
+
+    /* ============================
+       初期処理
+       ============================ */
     window.addEventListener('DOMContentLoaded', async () => {
       const session = await window.getSession();
       if (!session) {
-        window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
+        window.location.href = "login.html";
         return;
       }
 
-      // URL パラメータ処理
       const params = new URLSearchParams(location.search);
       const initialKubun = params.get('kubun') || 'ALL';
-      const kubunEl = document.getElementById('kubun');
-      kubunEl.value = initialKubun;
-      kubunEl.disabled = true;
+      document.getElementById('kubun').value = initialKubun;
 
-      // 取引先名 → ID
+      /* 取引先名 → ID */
       document.getElementById('torihikisaki_name').addEventListener('input', () => {
         const name = document.getElementById('torihikisaki_name').value;
         const opts = document.getElementById('torihikisaki_list').options;
@@ -222,11 +211,12 @@
         }
       });
 
-      // 年月初期化
+      /* 年月初期化 */
       function initYearMonth() {
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth() + 1;
+
         const yearSel = document.getElementById('year');
         const monthSel = document.getElementById('month');
         yearSel.innerHTML = '';
@@ -248,10 +238,9 @@
         }
       }
 
-      // 取引先一覧
+      /* 取引先一覧 */
       async function loadTorihikisakiList() {
-        const { data, error } = await supabase.from('torihikisaki').select('id,name').order('name');
-        if (error) { console.error(error); return; }
+        const { data } = await supabase.from('torihikisaki').select('id,name').order('name');
         const dl = document.getElementById('torihikisaki_list');
         dl.innerHTML = '';
         data.forEach(t => {
@@ -262,9 +251,9 @@
         });
       }
 
-      // ----------------------------
-      // 検索処理
-      // ----------------------------
+      /* ============================
+         検索処理（フリーワード修正版）
+         ============================ */
       async function search() {
         const year = Number(document.getElementById('year').value);
         const month = Number(document.getElementById('month').value);
@@ -275,53 +264,47 @@
         const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0,10);
         const endDate   = new Date(Date.UTC(year, month, 1)).toISOString().slice(0,10);
 
-        try {
-          let query = supabase.from('document').select(`
-            id, document_date, torihikisaki_id, title, total, cancel_flag,
-            mf_document_id, torihikisaki(name)
-          `);
+        let query = supabase.from('document').select(`
+          id, document_date, torihikisaki_id, title, total, cancel_flag,
+          mf_document_id, torihikisaki(name)
+        `);
 
-          query = query.gte('document_date', startDate).lt('document_date', endDate);
+        query = query.gte('document_date', startDate).lt('document_date', endDate);
 
-          if (kubun !== 'ALL') {
-            query = query.ilike('id', `${kubun}%`);
-          }
-
-          if (torihikisaki_id) {
-            query = query.eq('torihikisaki_id', torihikisaki_id);
-          }
-
-          if (freeword) {
-            const esc = freeword.replace(/%/g, '\\%').replace(/_/g, '\\_');
-            query = query.or(
-              `id.ilike.%${esc}%,title.ilike.%${esc}%,torihikisaki.name.ilike.%${esc}%,document_date.ilike.%${esc}%`
-            );
-          }
-
-          query = query.order('document_date', { ascending: false }).order('id', { ascending: false });
-
-          const { data, error } = await query;
-          if (error) {
-            window.showError(error.message);
-            return;
-          }
-
-          renderTable(data || []);
-        } catch (e) {
-          window.showError(e.message);
+        if (kubun !== 'ALL') {
+          query = query.ilike('id', `${kubun}%`);
         }
+
+        if (torihikisaki_id) {
+          query = query.eq('torihikisaki_id', torihikisaki_id);
+        }
+
+        // JOIN カラムを含む OR は Supabase がパースできないため、JS 側でフィルタする
+        let { data: rows, error } = await query;
+        if (error) return window.showError(error.message);
+
+        if (freeword) {
+          rows = rows.filter(r =>
+            (r.id || '').includes(freeword) ||
+            (r.title || '').includes(freeword) ||
+            (r.document_date || '').includes(freeword) ||
+            (r.torihikisaki?.name || '').includes(freeword)
+          );
+        }
+
+        renderTable(rows);
       }
 
-      // ----------------------------
-      // テーブル描画
-      // ----------------------------
+      /* ============================
+         テーブル描画
+         ============================ */
       function renderTable(rows) {
         const tbody = document.getElementById('tbody');
         tbody.innerHTML = '';
 
         if (!rows.length) {
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td colspan="7">該当データがありません</td>`;
+          tr.innerHTML = `<td colspan="8">該当データがありません</td>`;
           tbody.appendChild(tr);
           return;
         }
@@ -334,29 +317,36 @@
           tr.dataset.kubun = getKubun(r.id);
           tr.dataset.cancelFlag = r.cancel_flag ?? 0;
           tr.dataset.mfDocumentId = r.mf_document_id || '';
-          tr.dataset.torihikisakiId = r.torihikisaki_id || '';
 
-          const tdSel = document.createElement('td');
-          tdSel.style.textAlign = 'center';
-          tdSel.innerHTML = `<input type="radio" name="selectedDoc" value="${r.id}">`;
-          tr.appendChild(tdSel);
-
-          tr.innerHTML += `
+          tr.innerHTML = `
+            <td style="text-align:center"><input type="radio" name="selectedDoc" value="${r.id}"></td>
             <td>${r.id}</td>
             <td>${r.document_date?.slice(0,10) || ''}</td>
             <td>${r.torihikisaki?.name || ''}</td>
             <td>${r.title || ''}</td>
             <td style="text-align:right">${r.total ?? ''}</td>
+            <td>${r.mf_document_id ? `済(${r.mf_document_id})` : '未'}</td>
             <td>${r.cancel_flag == 1 ? 'はい' : 'いいえ'}</td>
           `;
+
+          // 行クリックで選択
+          tr.addEventListener('click', () => {
+            tr.querySelector('input[type="radio"]').checked = true;
+            updateActionButtons({
+              id: r.id,
+              kubun: getKubun(r.id),
+              cancelFlag: r.cancel_flag,
+              mfDocumentId: r.mf_document_id
+            });
+          });
 
           tbody.appendChild(tr);
         });
       }
 
-      // ----------------------------
-      // 取消処理
-      // ----------------------------
+      /* ============================
+         取消処理
+         ============================ */
       async function cancelDocument(docId) {
         if (!confirm('この帳票を取消しますか？')) return;
 
@@ -364,51 +354,50 @@
           p_document_id: docId
         });
 
-        if (error) {
-          window.showError(error.message);
-          return;
-        }
+        if (error) return window.showError(error.message);
 
         alert(`取消しました（${data.document_id}）`);
         await search();
       }
 
-      // ----------------------------
-      // 掛金登録（明細ごとに採番）
-      // ----------------------------
+      /* ============================
+         掛金登録（明細ごとに採番）
+         ============================ */
       async function registerKakekin(docId, kbn) {
         const session = await window.getSession();
-        if (!session) { window.showError('未認証です'); return; }
+        if (!session) return window.showError('未認証です');
         const uid = session.user.id;
 
-        const { data: doc } = await supabase
+        // document 取得
+        const { data: doc, error: docErr } = await supabase
           .from('document')
           .select('id, torihikisaki_id, title')
           .eq('id', docId)
           .single();
 
-        const { data: details } = await supabase
+        if (docErr || !doc) return window.showError(docErr?.message || 'document取得エラー');
+
+        // 明細取得
+        const { data: details, error: detErr } = await supabase
           .from('document_detail')
           .select('hinmoku_id, item, quantity, unit, price, amount, tax_rate')
           .eq('document_id', docId)
           .order('id');
 
-        if (!details || !details.length) {
-          window.showError('明細がありません');
-          return;
-        }
+        if (detErr) return window.showError(detErr.message);
+        if (!details || !details.length) return window.showError('明細がありません');
 
         const today = new Date().toISOString().slice(0,10);
 
+        // 明細ごとに採番して登録
         for (const d of details) {
+
+          // ★ 採番（明細1件につき1回）
           const { data: newId, error: seqErr } = await supabase.rpc(
             'get_next_document_code',
             { prefix: kbn, p_date: today }
           );
-          if (seqErr) {
-            window.showError('採番エラー: ' + seqErr.message);
-            return;
-          }
+          if (seqErr) return window.showError('採番エラー: ' + seqErr.message);
 
           const row = {
             id: newId,
@@ -427,6 +416,7 @@
             amount: d.amount,
             tax_rate: d.tax_rate,
 
+            // ★ 売掛は見積番号、買掛は発注番号
             mitsumori_no: (kbn === 'UR' ? doc.id : null),
             nouhin_no:   (kbn === 'KI' ? doc.id : null),
 
@@ -438,20 +428,20 @@
           };
 
           const { error: insErr } = await supabase.from('kakekin').insert(row);
-          if (insErr) {
-            window.showError(insErr.message);
-            return;
-          }
+          if (insErr) return window.showError(insErr.message);
         }
 
         alert(`掛金を登録しました（${kbn === 'UR' ? '売掛' : '買掛'} / ${details.length}件）`);
       }
 
-      // ----------------------------
-      // ボタンイベント
-      // ----------------------------
+      /* ============================
+         ボタンイベント
+         ============================ */
+
+      // 検索
       document.getElementById('btnSearch').addEventListener('click', search);
 
+      // クリア
       document.getElementById('btnClear').addEventListener('click', () => {
         document.getElementById('torihikisaki_name').value = '';
         document.getElementById('torihikisaki_id').value = '';
@@ -460,60 +450,79 @@
         search();
       });
 
+      // 参照
       document.getElementById('btnView').addEventListener('click', () => {
         const row = getSelectedRowData();
         if (!row) return alert('行を選択してください');
         location.href = `document-edit.html?kubun=${row.kubun}&id=${row.id}&mode=view`;
       });
 
+      // 編集
       document.getElementById('btnEdit').addEventListener('click', () => {
         const row = getSelectedRowData();
         if (!row) return alert('行を選択してください');
+
         if (row.cancelFlag == 1 || row.mfDocumentId) {
           return alert('取消済またはMF連携済の帳票は編集できません');
         }
+
         location.href = `document-edit.html?kubun=${row.kubun}&id=${row.id}&mode=edit`;
       });
 
+      // MF連携
       document.getElementById('btnMf').addEventListener('click', async () => {
         const row = getSelectedRowData();
         if (!row) return alert('行を選択してください');
+
         if (row.cancelFlag == 1) return alert('取消済の帳票はMF連携できません');
         if (row.mfDocumentId) return alert('すでにMF連携済です');
+
         if (!confirm('MFクラウドへ送信しますか？')) return;
+
         await window.sendMF(row.id);
       });
 
+      // 取消
       document.getElementById('btnCancelDoc').addEventListener('click', async () => {
         const row = getSelectedRowData();
         if (!row) return alert('行を選択してください');
+
         if (row.cancelFlag == 1) return alert('すでに取消済です');
+
         await cancelDocument(row.id);
       });
 
+      // ★ 売掛（UR）→ MT のみ
       document.getElementById('btnUrKake').addEventListener('click', async () => {
         const row = getSelectedRowData();
         if (!row) return alert('行を選択してください');
-        if (row.kubun !== 'MT' && row.kubun !== 'DL') {
-          return alert('売掛登録は見積(MT)または納品(DL)のみです');
+
+        if (row.kubun !== 'MT') {
+          return alert('売掛登録は見積(MT)のみです');
         }
+
         if (!confirm('売掛登録しますか？')) return;
+
         await registerKakekin(row.id, 'UR');
       });
 
+      // ★ 買掛（KI）→ PO のみ
       document.getElementById('btnKiKake').addEventListener('click', async () => {
         const row = getSelectedRowData();
         if (!row) return alert('行を選択してください');
+
         if (row.kubun !== 'PO') {
           return alert('買掛登録は発注(PO)のみです');
         }
+
         if (!confirm('買掛登録しますか？')) return;
+
         await registerKakekin(row.id, 'KI');
       });
 
-      // ----------------------------
-      // 初期ロード
-      // ----------------------------
+      /* ============================
+         初期ロード
+         ============================ */
       initYearMonth();
       await loadTorihikisakiList();
       await search();
