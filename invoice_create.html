@@ -98,27 +98,16 @@
 
       let rows = [];
 
+      const { data, error } = await supabase.rpc("preview_invoice", {
+        p_start: start,
+        p_end: end,
+        p_torihikisaki_id: tid
+      });
+      if (error) { alert(error.message); return; }
+
       if (kubun === "DL") {
-        // ★ 納品書モード
-        const { data, error } = await supabase.rpc("preview_invoice", {
-          p_start: start,
-          p_end: end,
-          p_torihikisaki_id: tid
-        });
-        if (error) { alert(error.message); return; }
-
-        // ★ 納品書番号が未設定のものだけ
         rows = data.filter(r => !r.nouhin_no);
-
       } else {
-        // ★ 請求書モード（既存）
-        const { data, error } = await supabase.rpc("preview_invoice", {
-          p_start: start,
-          p_end: end,
-          p_torihikisaki_id: tid
-        });
-        if (error) { alert(error.message); return; }
-
         rows = data;
       }
 
@@ -349,24 +338,30 @@
       });
       if (docErr) { alert(docErr.message); return; }
 
-      // ★ document_detail 登録
+      // ----------------------------
+      // ★ document_detail 登録（Null 安全化＋全項目コピー）
+      // ----------------------------
       for (const r of selectedRows) {
         const { data: detId } = await supabase.rpc(
           "get_next_document_detail_id",
           { doc_id: newDocId }
         );
 
+        const safe = {
+          hinmoku_id: r.hinmoku_id ?? null,
+          item: r.item ?? "",
+          quantity: Number(r.quantity ?? 0),
+          price: Number(r.price ?? 0),
+          amount: Number(r.amount ?? 0),
+          unit: r.unit ?? "",
+          tax_rate: Number(r.tax_rate ?? 0),
+          delivery_date: r.delivery_date ?? null
+        };
+
         await supabase.from("document_detail").insert({
           id: detId,
           document_id: newDocId,
-          hinmoku_id: r.hinmoku_id,
-          item: r.item,
-          quantity: r.quantity,
-          price: r.price,
-          amount: r.amount,
-          unit: r.unit,
-          tax_rate: r.tax_rate,
-          delivery_date: r.delivery_date,
+          ...safe,
           created_by: uid,
           updated_by: uid
         });
