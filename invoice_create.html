@@ -2,14 +2,21 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>請求データ作成</title>
+  <title>請求／納品書 作成</title>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    // ----------------------------
+    // URL パラメータ
+    // ----------------------------
+    const params = new URLSearchParams(location.search);
+    const kubun = params.get("kubun") || "SE"; // SE=請求, DL=納品
 
     // ----------------------------
     // ログインチェック
@@ -17,7 +24,7 @@
     async function checkLogin() {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
-        window.location.href = "login.html";
+        location.href = "login.html";
         return false;
       }
       return true;
@@ -29,9 +36,19 @@
     window.addEventListener("DOMContentLoaded", async () => {
       if (!(await checkLogin())) return;
 
+      setupTitle();
       setInitialPeriod();
       await loadTorihikisaki();
     });
+
+    function setupTitle() {
+      const h2 = document.querySelector("h2");
+      if (kubun === "DL") {
+        h2.textContent = "納品書作成";
+      } else {
+        h2.textContent = "請求データ作成";
+      }
+    }
 
     // ----------------------------
     // 当月の月初・月末をセット
@@ -41,85 +58,109 @@
       const first = new Date(now.getFullYear(), now.getMonth(), 1);
       const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      document.getElementById("start_date").value = formatDateLocal(first);
-      document.getElementById("end_date").value   = formatDateLocal(last);
-      document.getElementById("doc_date").value = formatDateLocal(last);
+      document.getElementById("start_date").value = fmt(first);
+      document.getElementById("end_date").value   = fmt(last);
+      document.getElementById("doc_date").value   = fmt(last);
     }
 
-    // 日付生成
-    function formatDateLocal(date) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, "0");
-      const d = String(date.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
+    function fmt(d) {
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     }
+
     // ----------------------------
-    // 取引先一覧ロード
+    // 取引先一覧
     // ----------------------------
     async function loadTorihikisaki() {
       const { data, error } = await supabase
         .from("torihikisaki")
-        .select("id, name")
+        .select("id,name")
         .order("id");
 
-      if (error) {
-        alert("取引先取得エラー: " + error.message);
-        return;
-      }
+      if (error) { alert(error.message); return; }
 
       const sel = document.getElementById("torihikisaki");
-      data.forEach(row => {
+      data.forEach(r => {
         const opt = document.createElement("option");
-        opt.value = row.id;
-        opt.textContent = row.name;
+        opt.value = r.id;
+        opt.textContent = r.name;
         sel.appendChild(opt);
       });
     }
 
     // ----------------------------
-    // プレビュー実行
+    // プレビュー
     // ----------------------------
     async function loadPreview() {
       const start = document.getElementById("start_date").value;
       const end   = document.getElementById("end_date").value;
       const tid   = document.getElementById("torihikisaki").value;
+      const free  = document.getElementById("freeword").value.toLowerCase();
 
-      const { data, error } = await supabase.rpc("preview_invoice", {
-        p_start: start,
-        p_end: end,
-        p_torihikisaki_id: tid
-      });
+      let rows = [];
 
-      if (error) {
-        alert("プレビュー取得エラー: " + error.message);
-        return;
+      if (kubun === "DL") {
+        // ★ 納品書モード
+        const { data, error } = await supabase.rpc("preview_invoice", {
+          p_start: start,
+          p_end: end,
+          p_torihikisaki_id: tid
+        });
+        if (error) { alert(error.message); return; }
+
+        // ★ 納品書番号が未設定のものだけ
+        rows = data.filter(r => !r.nouhin_no);
+
+      } else {
+        // ★ 請求書モード（既存）
+        const { data, error } = await supabase.rpc("preview_invoice", {
+          p_start: start,
+          p_end: end,
+          p_torihikisaki_id: tid
+        });
+        if (error) { alert(error.message); return; }
+
+        rows = data;
       }
 
-      renderPreview(data);
+      // ★ フリー検索
+      if (free) {
+        rows = rows.filter(r =>
+          (r.mitsumori_no ?? "").toLowerCase().includes(free) ||
+          (r.item ?? "").toLowerCase().includes(free) ||
+          (r.kakekin_id ?? "").toLowerCase().includes(free) ||
+          (r.memo ?? "").toLowerCase().includes(free) ||
+          (r.torihikisaki_name ?? "").toLowerCase().includes(free)
+        );
+      }
+
+      renderPreview(rows);
     }
 
     // ----------------------------
     // プレビュー描画
     // ----------------------------
-    let previewData = {}; // グループ化後のデータ保持
+    let previewData = {};
 
     function renderPreview(rows) {
       const area = document.getElementById("preview_area");
       area.innerHTML = "";
 
-      if (!rows || rows.length === 0) {
+      if (!rows.length) {
         area.innerHTML = "<p>対象データがありません。</p>";
-        updateSummary(0, 0, 0);
+        updateSummary(0,0,0);
         return;
       }
 
-      // グルーピング
       previewData = {};
+
       rows.forEach(r => {
-        if (!previewData[r.torihikisaki_id]) previewData[r.torihikisaki_id] = {
-          name: r.torihikisaki_name,
-          rows: []
-        };
+        if (!previewData[r.torihikisaki_id]) {
+          previewData[r.torihikisaki_id] = {
+            name: r.torihikisaki_name,
+            rows: []
+          };
+        }
+        r.selected = true;
         previewData[r.torihikisaki_id].rows.push(r);
       });
 
@@ -131,24 +172,24 @@
         const groupDiv = document.createElement("div");
         groupDiv.className = "group";
 
-        const groupTotal = g.rows.reduce((sum, r) => sum + Number(r.amount), 0);
+        const groupTotal = g.rows.reduce((s,r)=>s+Number(r.amount),0);
         totalCount += g.rows.length;
         totalAmount += groupTotal;
 
-        // グループヘッダ
         groupDiv.innerHTML = `
           <div class="group-header">
             ${g.name}（${g.rows.length}件）　
-            対象期間合計：${groupTotal.toLocaleString()} 円
+            合計：${groupTotal.toLocaleString()} 円
           </div>
           <table>
             <tr>
               <th>選択</th>
               <th>掛金ID</th>
-              <th>計上日</th>
+              <th>出荷日</th>
+              <th>納品日</th>
               <th>品目</th>
-              <th>数量</th>
-              <th>金額</th>
+              <th class="right">数量</th>
+              <th class="right">金額</th>
               <th>見積番号</th>
               <th>納品番号</th>
             </tr>
@@ -157,16 +198,16 @@
 
         const table = groupDiv.querySelector("table");
 
-        g.rows.forEach((r, idx) => {
-          r.selected = true;
+        g.rows.forEach((r,idx)=>{
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td><input type="checkbox" checked onchange="updateSelection('${tid}', ${idx})"></td>
+            <td><input type="checkbox" checked onchange="updateSelection('${tid}',${idx})"></td>
             <td>${r.kakekin_id}</td>
-            <td>${r.keijo_date}</td>
+            <td>${r.ship_date ?? ""}</td>
+            <td>${r.delivery_date ?? ""}</td>
             <td>${r.item}</td>
-            <td>${r.quantity}</td>
-            <td>${Number(r.amount).toLocaleString()}</td>
+            <td class="right">${Number(r.quantity).toLocaleString()}</td>
+            <td class="right">${Number(r.amount).toLocaleString()}</td>
             <td>${r.mitsumori_no ?? ""}</td>
             <td>${r.nouhin_no ?? ""}</td>
           `;
@@ -176,102 +217,170 @@
         area.appendChild(groupDiv);
       }
 
-      updateSummary(totalCount, totalAmount, 0);
+      updateSummary(totalCount,totalAmount,totalAmount);
     }
 
     // ----------------------------
     // 選択変更
     // ----------------------------
-    function updateSelection(tid, idx) {
-      const g = previewData[tid];
-      g.rows[idx].selected = !g.rows[idx].selected;
-
+    window.updateSelection = function(tid,idx){
+      const r = previewData[tid].rows[idx];
+      r.selected = !r.selected;
       updateAllSummary();
-    }
+    };
 
     function updateAllSummary() {
       let total = 0;
       let selected = 0;
 
       for (const tid in previewData) {
-        const g = previewData[tid];
-        g.rows.forEach(r => {
+        previewData[tid].rows.forEach(r=>{
           total += Number(r.amount);
-          if (r.selected !== false) selected += Number(r.amount);
+          if (r.selected) selected += Number(r.amount);
         });
       }
 
       updateSummary(
-        Object.values(previewData).reduce((sum, g) => sum + g.rows.length, 0),
+        Object.values(previewData).reduce((s,g)=>s+g.rows.length,0),
         total,
         selected
       );
     }
 
-    // ----------------------------
-    // サマリ更新
-    // ----------------------------
-    function updateSummary(count, total, selected) {
+    function updateSummary(count,total,selected){
       const unselected = total - selected;
-
       document.getElementById("summary_bar").innerHTML =
-        `対象件数: ${count} 件　
-         対象期間合計: ${total.toLocaleString()} 円　
+        `件数: ${count} 件　
+         合計: ${total.toLocaleString()} 円　
          選択合計: ${selected.toLocaleString()} 円　
-         未選択合計: ${unselected.toLocaleString()} 円`;
+         未選択: ${unselected.toLocaleString()} 円`;
     }
 
     // ----------------------------
-    // 請求データ作成（DBFunction 呼び出し）
+    // 作成ボタン
     // ----------------------------
-    async function createInvoice() {
-      if (!confirm("選択した内容で請求データを作成します。よろしいですか？")) return;
-    
+    window.createInvoice = async function() {
+      if (kubun === "DL") {
+        await createDelivery();
+      } else {
+        await createInvoiceSE();
+      }
+    };
+
+    // ----------------------------
+    // 請求書（SE）作成（既存）
+    // ----------------------------
+    async function createInvoiceSE() {
+      if (!confirm("選択した内容で請求書を作成します。")) return;
+
       const payload = {
         p_doc_date: document.getElementById("doc_date").value,
         p_period_start: document.getElementById("start_date").value,
         p_period_end: document.getElementById("end_date").value,
-        p_groups: Object.entries(previewData).map(([tid, g]) => ({
+        p_groups: Object.entries(previewData).map(([tid,g])=>({
           torihikisaki_id: tid,
-          selected_kakekin_ids: g.rows
-            .filter(r => r.selected !== false)
-            .map(r => r.kakekin_id )
-        }))
-        .filter(g => g.selected_kakekin_ids.length > 0)
+          selected_kakekin_ids: g.rows.filter(r=>r.selected).map(r=>r.kakekin_id)
+        })).filter(g=>g.selected_kakekin_ids.length>0)
       };
-    
-      const { data, error } = await supabase.rpc('rpc_invoice_create_bulk', payload);  // DBfunction化
-      // const { data, error } = await supabase.functions.invoke("invoice_create", {
-      //   body: payload
-      // });
 
-      console.log("RPC result", data);
+      const { data, error } = await supabase.rpc("rpc_invoice_create_bulk", payload);
+      if (error) { alert(error.message); return; }
 
+      alert("請求書作成が完了しました");
+    }
 
-      if (error) {
-        alert("作成エラー: " + JSON.stringify(error));
-        console.error(error);
+    // ----------------------------
+    // 納品書（DL）作成（新規）
+    // ----------------------------
+    async function createDelivery() {
+      if (!confirm("選択した内容で納品書を作成します。")) return;
+
+      // 選択された掛金を集める
+      const selectedRows = [];
+      for (const tid in previewData) {
+        previewData[tid].rows.forEach(r=>{
+          if (r.selected) selectedRows.push(r);
+        });
+      }
+      if (!selectedRows.length) {
+        alert("選択がありません");
         return;
       }
-      // data.ok が true でも、内部の results にエラーがある可能性がある
-      const results = data.results || [];
-      
-      const failed = results.filter(r => r.ok === false);
-      
-      if (failed.length > 0) {
-        console.error("エラー詳細:", failed);
-        alert("一部または全部の請求書作成に失敗しました。\n" +
-              failed.map(f => `${f.torihikisaki_id}: ${f.error}`).join("\n"));
-        return;
+
+      // ★ 対象期間開始＝最小 ship_date
+      const period_start = selectedRows.reduce(
+        (min,r)=> r.ship_date < min ? r.ship_date : min,
+        selectedRows[0].ship_date
+      );
+
+      // ★ 対象期間終了＝最大 delivery_date
+      const period_end = selectedRows.reduce(
+        (max,r)=> r.delivery_date > max ? r.delivery_date : max,
+        selectedRows[0].delivery_date
+      );
+
+      // ★ 納品書番号採番
+      const doc_date = document.getElementById("doc_date").value;
+      const { data: seq, error: seqErr } = await supabase.rpc(
+        "get_next_document_code",
+        { prefix: "DL", p_date: doc_date }
+      );
+      if (seqErr) { alert(seqErr.message); return; }
+
+      const newDocId = seq;
+
+      // ★ document 登録
+      const { data: user } = await supabase.auth.getUser();
+      const uid = user.user.id;
+
+      const torihikisaki_id = selectedRows[0].torihikisaki_id;
+
+      const { error: docErr } = await supabase.from("document").insert({
+        id: newDocId,
+        torihikisaki_id,
+        document_date: doc_date,
+        title: "納品書",
+        period_start,
+        period_end,
+        total: selectedRows.reduce((s,r)=>s+Number(r.amount),0),
+        memo: "",
+        created_by: uid,
+        updated_by: uid
+      });
+      if (docErr) { alert(docErr.message); return; }
+
+      // ★ document_detail 登録
+      for (const r of selectedRows) {
+        const { data: detId } = await supabase.rpc(
+          "get_next_document_detail_id",
+          { doc_id: newDocId }
+        );
+
+        await supabase.from("document_detail").insert({
+          id: detId,
+          document_id: newDocId,
+          hinmoku_id: r.hinmoku_id,
+          item: r.item,
+          quantity: r.quantity,
+          price: r.price,
+          amount: r.amount,
+          unit: r.unit,
+          tax_rate: r.tax_rate,
+          delivery_date: r.delivery_date,
+          created_by: uid,
+          updated_by: uid
+        });
+
+        // ★ 掛金に納品書番号を設定
+        await supabase.from("kakekin")
+          .update({ nouhin_no: newDocId })
+          .eq("id", r.kakekin_id);
       }
-      // ここまで来たら完全成功
-      alert("請求データ作成が完了しました");
-      console.log(data);
+
+      alert("納品書を作成しました（番号: " + newDocId + "）");
     }
 
     window.loadPreview = loadPreview;
-    window.updateSelection = updateSelection;
-    window.createInvoice = createInvoice;
 
   </script>
 
@@ -280,14 +389,15 @@
     .group { border: 1px solid #ccc; margin-top: 20px; padding: 10px; }
     .group-header { font-weight: bold; margin-bottom: 10px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    th, td { border: 1px solid #ccc; padding: 6px; }
+    td.right { text-align: right; }
     .summary-bar { background: #f0f0f0; padding: 10px; margin-top: 20px; }
   </style>
 </head>
 
 <body>
 
-<h2>請求データ作成</h2>
+<h2>請求／納品書 作成</h2>
 
 <!-- フィルタ -->
 <div>
@@ -300,26 +410,31 @@
     </select>
   </label>
 
+  <label>検索:
+    <input type="text" id="freeword" placeholder="見積番号・品目名・掛金IDなど">
+  </label>
+
   <button onclick="loadPreview()">プレビュー</button>
 </div>
 
 <!-- サマリ -->
 <div class="summary-bar" id="summary_bar">
-  対象件数: 0 件　
-  対象期間合計: 0 円　
+  件数: 0 件　
+  合計: 0 円　
   選択合計: 0 円　
-  未選択合計: 0 円
+  未選択: 0 円
 </div>
 
 <!-- プレビュー -->
 <div id="preview_area"></div>
 
-<!-- 請求作成 -->
+<!-- 作成 -->
 <div style="margin-top:20px;">
-  <label>発行日: <input type="date" id="doc_date" value=""></label>
-  <button onclick="createInvoice()">請求データ作成</button>
+  <label>発行日: <input type="date" id="doc_date"></label>
+  <button onclick="createInvoice()">作成</button>
 </div>
-  <button onclick="location.href='index.html'">メニューへ</button>
+
+<button onclick="location.href='index.html'">メニューへ</button>
 
 </body>
 </html>
