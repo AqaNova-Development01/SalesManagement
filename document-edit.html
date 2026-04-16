@@ -109,6 +109,15 @@
     }
 
     // ----------------------------
+    // 取引先変更イベント（PO のみ）
+    // ----------------------------
+    window.onTorihikisakiChange = async function() {
+      if (kubun === "PO" && !docId) {
+        await loadItemMaster_PO();
+      }
+    };
+
+    // ----------------------------
     // ヘッダ初期値
     // ----------------------------
     function setDefaultHeader() {
@@ -176,7 +185,7 @@
         const tr = document.querySelector("#detail_body tr:last-child");
 
         tr.children[1].children[0].value = d.quantity;
-        tr.children[2].children[0].value = d.price.toLocaleString();
+        tr.children[2].children[0].value = Number(d.price || 0).toLocaleString();
         tr.children[4].children[0].value = d.unit;
         tr.children[5].children[0].value = d.tax_rate;
 
@@ -229,17 +238,20 @@
           <button onclick="addDetail('${r.id}', '${r.name}', ${r.price}, '${r.unit}', ${r.tax_rate})">
             追加
           </button>
-          ${r.name}（${r.price.toLocaleString()} 円 / ${r.unit} / 税率:${r.tax_rate}%）
+          ${r.name}（${Number(r.price).toLocaleString()} 円 / ${r.unit} / 税率:${r.tax_rate}%）
         `;
         area.appendChild(div);
       });
     }
 
     // ----------------------------
-    // 明細追加
+    // 明細追加（null 安全化済）
     // ----------------------------
     window.addDetail = function(id, name, price, unit, tax_rate) {
       const tbody = document.getElementById("detail_body");
+
+      const safePrice = Number(price || 0);
+      const safeTax = Number(tax_rate || 0);
 
       const tr = document.createElement("tr");
       tr.dataset.hinmokuId = id;
@@ -247,10 +259,10 @@
       tr.innerHTML = `
         <td><input type="text" value="${name}"></td>
         <td><input type="text" class="num" value="1" oninput="recalc(this)"></td>
-        <td><input type="text" class="num" value="${price.toLocaleString()}" oninput="recalc(this)"></td>
+        <td><input type="text" class="num" value="${safePrice.toLocaleString()}" oninput="recalc(this)"></td>
         <td class="amount num">0</td>
-        <td><input type="text" value="${unit}"></td>
-        <td><input type="text" class="num" value="${tax_rate}" oninput="recalc(this)"></td>
+        <td><input type="text" value="${unit || ""}"></td>
+        <td><input type="text" class="num" value="${safeTax}" oninput="recalc(this)"></td>
         <td><button onclick="this.closest('tr').remove(); calcTotal();">削除</button></td>
       `;
       tbody.appendChild(tr);
@@ -576,7 +588,7 @@
 
 <div>
   <label>取引先:
-    <select id="torihikisaki"></select>
+    <select id="torihikisaki" onchange="onTorihikisakiChange()"></select>
   </label>
   <br><br>
 
