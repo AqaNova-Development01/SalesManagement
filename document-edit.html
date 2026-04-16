@@ -16,7 +16,7 @@
     // URL パラメータ
     // ----------------------------
     const params = new URLSearchParams(window.location.search);
-    const kubun = params.get("kubun");   // MT / PO
+    const kubun = params.get("kubun");   // MT / PO / DL
     const docId = params.get("id");      // 編集時のみ
     const mode = params.get("mode") || "edit";
 
@@ -47,11 +47,24 @@
         setDefaultHeader();
       }
 
-      // 区分別の品目ロード
-      if (kubun === "MT") {
-        await loadItemMaster_MT();
-      } else if (kubun === "PO") {
-        await loadItemMaster_PO();
+      // MT/PO の新規作成時のみ品目リスト表示
+      if (!docId && kubun === "MT") await loadItemMaster_MT();
+      if (!docId && kubun === "PO") await loadItemMaster_PO();
+
+      // ★ DL 編集モードは品目リスト非表示
+      if (kubun === "DL" && docId) {
+        document.getElementById("item_list").style.display = "none";
+      }
+
+      // ★ DL 編集モードは取引先IDを非活性
+      if (kubun === "DL" && docId) {
+        document.getElementById("torihikisaki").disabled = true;
+      }
+
+      // ★ DL 編集モードは明細編集不可
+      if (kubun === "DL" && docId) {
+        document.querySelectorAll("#detail_body input").forEach(el => el.disabled = true);
+        document.querySelectorAll("#detail_body button").forEach(btn => btn.style.display = "none");
       }
 
       if (mode === "view") {
@@ -63,24 +76,18 @@
     // view モード
     // ----------------------------
     function setReadOnlyMode() {
-      // すべての input / textarea / select / button を無効化
       document.querySelectorAll("input, textarea, select, button").forEach(el => {
-        if (el.id === "btnBack" || el.id === "btnMenu") return; // 戻る系だけ有効
+        if (el.id === "btnBack" || el.id === "btnMenu") return;
         el.disabled = true;
       });
-    
-      // ★ view モードでは品目リストを完全非表示
-      const itemList = document.getElementById("item_list");
-      if (itemList) itemList.style.display = "none";
-    
-      // 明細削除ボタンを非表示
+
+      document.getElementById("item_list").style.display = "none";
+
       document.querySelectorAll("#detail_body button").forEach(btn => {
         btn.style.display = "none";
       });
-    
-      // タイトルに（参照）を付ける
-      const title = document.getElementById("title_page");
-      title.textContent += "（参照）";
+
+      document.getElementById("title_page").textContent += "（参照）";
     }
 
     // ----------------------------
@@ -99,13 +106,6 @@
         opt.textContent = `${r.id} ${r.name}`;
         sel.appendChild(opt);
       });
-
-      // PO の場合は取引先変更で品目リスト更新
-      sel.addEventListener("change", async () => {
-        if (kubun === "PO") {
-          await loadItemMaster_PO();
-        }
-      });
     }
 
     // ----------------------------
@@ -121,6 +121,9 @@
       } else if (kubun === "PO") {
         document.getElementById("title_page").innerText = "発注書 作成";
         document.getElementById("title").value = "発注書";
+      } else if (kubun === "DL") {
+        document.getElementById("title_page").innerText = "納品書 作成";
+        document.getElementById("title").value = "納品書";
       }
     }
 
@@ -136,19 +139,16 @@
     // ----------------------------
     async function loadExistingDocument(id) {
 
-      const { data: doc, error: docErr } = await supabase
+      const { data: doc } = await supabase
         .from("document")
         .select("*")
         .eq("id", id)
         .single();
 
-      if (docErr || !doc) {
-        alert("データ取得エラー: " + docErr?.message);
-        return;
-      }
-
       document.getElementById("title_page").innerText =
-        (kubun === "MT" ? "見積書" : "発注書") + " 編集";
+        (kubun === "MT" ? "見積書" :
+         kubun === "PO" ? "発注書" :
+         "納品書") + " 編集";
 
       document.getElementById("torihikisaki").value = doc.torihikisaki_id;
       document.getElementById("document_date").value = doc.document_date;
@@ -157,17 +157,12 @@
       document.getElementById("period_start").value = doc.period_start ?? "";
       document.getElementById("period_end").value = doc.period_end ?? "";
 
-      // 明細取得（order=id）
-      const { data: details, error: detErr } = await supabase
+      // 明細取得
+      const { data: details } = await supabase
         .from("document_detail")
         .select("*")
         .eq("document_id", id)
         .order("id");
-
-      if (detErr) {
-        alert("明細取得エラー: " + detErr.message);
-        return;
-      }
 
       for (const d of details) {
         addDetail(
@@ -195,16 +190,11 @@
     // 品目ロード（MT）
     // ----------------------------
     async function loadItemMaster_MT() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("hinmoku")
         .select("id, name, price, unit, tax_rate")
         .eq("torihikisaki_id", "TK00000")
         .order("id");
-
-      if (error) {
-        alert("品目取得エラー: " + error.message);
-        return;
-      }
 
       renderItemList(data);
     }
@@ -216,16 +206,11 @@
       const tId = document.getElementById("torihikisaki").value;
       if (!tId) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("hinmoku")
         .select("id, name, price, unit, tax_rate")
         .eq("torihikisaki_id", tId)
         .order("id");
-
-      if (error) {
-        alert("品目取得エラー: " + error.message);
-        return;
-      }
 
       renderItemList(data);
     }
@@ -308,6 +293,9 @@
       } else if (kubun === "PO") {
         if (docId) await updatePO(docId);
         else await savePO();
+      } else if (kubun === "DL") {
+        if (docId) await updateDL(docId);
+        else alert("納品書の新規作成は invoice_create から行ってください");
       }
     };
 
@@ -331,7 +319,7 @@
     }
 
     // ----------------------------
-    // 明細登録（旧仕様完全踏襲）
+    // 明細登録（旧仕様）
     // ----------------------------
     async function insertDetails(docId, details, uid) {
       for (let d of details) {
@@ -376,36 +364,25 @@
         return;
       }
 
-      const { data: seq, error: seqErr } = await supabase.rpc(
+      const { data: seq } = await supabase.rpc(
         "get_next_document_code",
         { prefix: "MT", p_date: document_date }
       );
-      if (seqErr) {
-        alert("採番エラー: " + seqErr.message);
-        return;
-      }
 
       const newDocId = seq;
 
-      const { error: docErr } = await supabase
-        .from("document")
-        .insert({
-          id: newDocId,
-          torihikisaki_id,
-          document_date,
-          title,
-          period_start,
-          period_end,
-          total: details.reduce((s, d) => s + d.amount, 0),
-          memo,
-          created_by: uid,
-          updated_by: uid
-        });
-
-      if (docErr) {
-        alert("ヘッダ登録エラー: " + docErr.message);
-        return;
-      }
+      await supabase.from("document").insert({
+        id: newDocId,
+        torihikisaki_id,
+        document_date,
+        title,
+        period_start,
+        period_end,
+        total: details.reduce((s, d) => s + d.amount, 0),
+        memo,
+        created_by: uid,
+        updated_by: uid
+      });
 
       await insertDetails(newDocId, details, uid);
 
@@ -433,7 +410,7 @@
         return;
       }
 
-      const { data, error: docErr } = await supabase
+      await supabase
         .from("document")
         .update({
           torihikisaki_id,
@@ -446,17 +423,7 @@
           updated_by: uid,
           updated_at: new Date()
         })
-        .eq("id", id)
-        .select();
-
-      if (docErr) {
-        alert("ヘッダ更新エラー: " + docErr.message);
-        return;
-      }
-      if (!data || data.length === 0) {
-        alert("更新対象が存在しません");
-        return;
-      }
+        .eq("id", id);
 
       await supabase.from("document_detail").delete().eq("document_id", id);
       await insertDetails(id, details, uid);
@@ -485,38 +452,26 @@
         return;
       }
 
-      const { data: seq, error: seqErr } = await supabase.rpc(
+      const { data: seq } = await supabase.rpc(
         "get_next_document_code",
         { prefix: "PO", p_date: document_date }
       );
-      if (seqErr) {
-        alert("採番エラー: " + seqErr.message);
-        return;
-      }
 
       const newDocId = seq;
 
-      const { error: docErr } = await supabase
-        .from("document")
-        .insert({
-          id: newDocId,
-          torihikisaki_id,
-          document_date,
-          title,
-          period_start,
-          period_end,
-          total: details.reduce((s, d) => s + d.amount, 0),
-          memo,
-          created_by: uid,
-          updated_by: uid
-        });
+      await supabase.from("document").insert({
+        id: newDocId,
+        torihikisaki_id,
+        document_date,
+        title,
+        period_start,
+        period_end,
+        total: details.reduce((s, d) => s + d.amount, 0),
+        memo,
+        created_by: uid,
+        updated_by: uid
+      });
 
-      if (docErr) {
-        alert("ヘッダ登録エラー: " + docErr.message);
-        return;
-      }
-
-      // 明細登録（旧仕様：1行ずつ get_next_document_detail_id）
       await insertDetails(newDocId, details, uid);
 
       alert("発注書を作成しました（番号: " + newDocId + "）");
@@ -524,7 +479,7 @@
     }
 
     // ----------------------------
-    // PO 更新（UPDATE）
+    // PO 更新
     // ----------------------------
     async function updatePO(id) {
       const { data: user } = await supabase.auth.getUser();
@@ -543,8 +498,7 @@
         return;
       }
 
-      // document 更新
-      const { data, error: docErr } = await supabase
+      await supabase
         .from("document")
         .update({
           torihikisaki_id,
@@ -557,26 +511,51 @@
           updated_by: uid,
           updated_at: new Date()
         })
-        .eq("id", id)
-        .select();
+        .eq("id", id);
 
-      if (docErr) {
-        alert("ヘッダ更新エラー: " + docErr.message);
-        return;
-      }
-      if (!data || data.length === 0) {
-        alert("更新対象が存在しません");
-        return;
-      }
-
-      // 既存明細削除
       await supabase.from("document_detail").delete().eq("document_id", id);
-
-      // 明細再登録（旧仕様：1行ずつ採番）
       await insertDetails(id, details, uid);
 
       alert("発注書を更新しました");
       location.href = "document-list.html?kubun=PO";
+    }
+
+    // ----------------------------
+    // DL 更新（ヘッダのみ更新）
+    // ----------------------------
+    async function updateDL(id) {
+      const { data: user } = await supabase.auth.getUser();
+      const uid = user?.user?.id;
+
+      const document_date = document.getElementById("document_date").value;
+      const title = document.getElementById("title").value;
+      const memo = document.getElementById("memo").value;
+      const period_start = document.getElementById("period_start").value || null;
+      const period_end = document.getElementById("period_end").value || null;
+
+      // ★ DL は取引先IDを更新しない
+      // ★ DL は明細を更新しない（DELETE/INSERT しない）
+
+      const { error } = await supabase
+        .from("document")
+        .update({
+          document_date,
+          title,
+          memo,
+          period_start,
+          period_end,
+          updated_by: uid,
+          updated_at: new Date()
+        })
+        .eq("id", id);
+
+      if (error) {
+        alert("納品書の更新に失敗しました: " + error.message);
+        return;
+      }
+
+      alert("納品書を更新しました（ヘッダのみ）");
+      location.href = "document-list.html?kubun=DL";
     }
 
   </script>
