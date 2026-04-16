@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>帳票一覧</title>
+  <title>帳票一覧（完全版5）</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP"; padding:16px; max-width:1100px; margin:auto; }
@@ -432,7 +432,7 @@
 
         const { data: doc } = await supabase
           .from('document')
-          .select('id, torihikisaki_id, title')
+          .select('id, period_start, period_end, torihikisaki_id, title')
           .eq('id', docId)
           .single();
 
@@ -445,6 +445,10 @@
         if (!details || !details.length) return window.showError('明細がありません');
 
         const today = new Date().toISOString().slice(0,10);
+        // ★ 予定日があれば優先
+        const ship_date     = doc.period_start || today;
+        const delivery_date = doc.period_end   || today;
+        const keijo_date    = doc.period_end   || today;
 
         for (const d of details) {
           const { data: newId, error: seqErr } = await supabase.rpc(
@@ -458,9 +462,9 @@
             kake_kbn: kbn,
             torihikisaki_id: doc.torihikisaki_id,
 
-            ship_date: today,
-            delivery_date: today,
-            keijo_date: today,
+            ship_date,
+            delivery_date,
+            keijo_date,
 
             hinmoku_id: d.hinmoku_id,
             item: d.item,
