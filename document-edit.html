@@ -63,16 +63,24 @@
     // view モード
     // ----------------------------
     function setReadOnlyMode() {
+      // すべての input / textarea / select / button を無効化
       document.querySelectorAll("input, textarea, select, button").forEach(el => {
-        if (el.id === "btnBack" || el.id === "btnMenu") return;
+        if (el.id === "btnBack" || el.id === "btnMenu") return; // 戻る系だけ有効
         el.disabled = true;
       });
-
+    
+      // ★ view モードでは品目リストを完全非表示
+      const itemList = document.getElementById("item_list");
+      if (itemList) itemList.style.display = "none";
+    
+      // 明細削除ボタンを非表示
       document.querySelectorAll("#detail_body button").forEach(btn => {
         btn.style.display = "none";
       });
-
-      document.getElementById("title_page").textContent += "（参照）";
+    
+      // タイトルに（参照）を付ける
+      const title = document.getElementById("title_page");
+      title.textContent += "（参照）";
     }
 
     // ----------------------------
