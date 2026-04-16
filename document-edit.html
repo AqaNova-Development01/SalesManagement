@@ -1,367 +1,503 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>帳票作成</title>
+  <meta charset="utf-8" />
+  <title>帳票編集</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP"; padding:16px; max-width:1100px; margin:auto; }
+    h1 { margin-bottom:12px; }
+    .row { display:flex; gap:12px; margin-bottom:8px; flex-wrap:wrap; }
+    .field { display:flex; flex-direction:column; min-width:200px; }
+    label { font-size:13px; margin-bottom:2px; }
+    input[type="text"], input[type="date"], select, textarea { padding:6px 8px; font-size:14px; }
+    textarea { min-height:60px; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { border:1px solid #e0e0e0; padding:6px; font-size:13px; }
+    th { background:#f5f5f5; }
+    tfoot td { background:#fafafa; font-weight:bold; }
+    .right { text-align:right; }
+    .actions { margin-top:12px; display:flex; gap:8px; }
+    button { padding:6px 10px; font-size:14px; cursor:pointer; }
+    .readonly { background:#f7f7f7; }
+  </style>
+</head>
+<body>
+  <h1 id="pageTitle">帳票編集</h1>
+
+  <div class="row">
+    <div class="field">
+      <label for="kubunLabel">区分</label>
+      <input id="kubunLabel" type="text" class="readonly" readonly>
+    </div>
+    <div class="field">
+      <label for="document_id">帳票ID</label>
+      <input id="document_id" type="text" class="readonly" readonly>
+    </div>
+    <div class="field">
+      <label for="document_date">発行日</label>
+      <input id="document_date" type="date">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="torihikisaki_id">取引先</label>
+      <select id="torihikisaki_id"></select>
+    </div>
+    <div class="field">
+      <label for="title">表題</label>
+      <input id="title" type="text">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="period_start">発送（工事開始）予定日</label>
+      <input id="period_start" type="date">
+    </div>
+    <div class="field">
+      <label for="period_end">納品（工事終了）予定日</label>
+      <input id="period_end" type="date">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field" style="flex:1;">
+      <label for="memo">備考</label>
+      <textarea id="memo"></textarea>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="name">会社名</label>
+      <input id="name" type="text" class="readonly" readonly>
+    </div>
+    <div class="field">
+      <label for="department">部署</label>
+      <input id="department" type="text" class="readonly" readonly>
+    </div>
+    <div class="field">
+      <label for="person">担当者</label>
+      <input id="person" type="text" class="readonly" readonly>
+    </div>
+    <div class="field">
+      <label for="invoice_number">インボイス番号</label>
+      <input id="invoice_number" type="text" class="readonly" readonly>
+    </div>
+  </div>
+
+  <h2>明細</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:32px;">#</th>
+        <th>品目</th>
+        <th>数量</th>
+        <th>単位</th>
+        <th>単価</th>
+        <th>金額</th>
+        <th>税率</th>
+        <th style="width:60px;">操作</th>
+      </tr>
+    </thead>
+    <tbody id="detailBody"></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" class="right">合計</td>
+        <td class="right" id="totalCell">0</td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="actions">
+    <button id="btnAddRow">行追加</button>
+    <button id="btnSave">保存</button>
+    <button id="btnBack">一覧へ戻る</button>
+  </div>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    const supabase = createClient(
-      "https://omzcbfjtwyygvvgxsiov.supabase.co",
-      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
-    );
+    const SUPABASE_URL = "https://omzcbfjtwyygvvgxsiov.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ----------------------------
-    // URL パラメータ
-    // ----------------------------
-    const params = new URLSearchParams(window.location.search);
-    const kubun = params.get("kubun");   // MT / DL / PO
-    const docId = params.get("id");      // 編集時のみ
-    const mode = params.get("mode") || "edit"; // ← view / edit
-
-    // ----------------------------
-    // ログインチェック
-    // ----------------------------
     async function checkLogin() {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        window.location.href = "login.html";
+        window.location.href = "https://aqanova-development01.github.io/SalesManagement/login.html";
         return false;
       }
       return true;
     }
 
-    // ----------------------------
-    // 初期処理
-    // ----------------------------
-    window.addEventListener("DOMContentLoaded", async () => {
-
-      if (!(await checkLogin())) return;
-
-      await loadTorihikisaki();
-
-      if (docId) {
-        // 編集モード
-        document.getElementById("title_page").innerText = "見積書 編集";
-        await loadExistingDocument(docId);
-        await loadItemMaster();
-      } else {
-        // 新規作成モード
-        setDefaultHeader();
-        if (kubun === "MT") {
-          document.getElementById("title_page").innerText = "見積書 作成";
-          await loadItemMaster();
-        }
-      }
-
-      // ★ view モードなら読み取り専用にする
-      if (mode === "view") {
-        setReadOnlyMode();
-      }
-    });
-
-    // ----------------------------
-    // view モード設定
-    // ----------------------------
-    function setReadOnlyMode() {
-      // すべての input / textarea / select / button を無効化
-      document.querySelectorAll("input, textarea, select, button").forEach(el => {
-        if (el.id === "back_button") return; // 戻るボタンだけ有効
-        el.disabled = true;
-      });
-
-      // 品目TBLを非表示
-      const itemList = document.getElementById("item_list");
-      if (itemList) itemList.style.display = "none";
-
-      // 明細削除ボタンを非表示
-      document.querySelectorAll("#detail_body button").forEach(btn => {
-        btn.style.display = "none";
-      });
-
-      // タイトルに（参照）を付ける
-      const title = document.getElementById("title_page");
-      title.textContent += "（参照）";
+    function getKubunLabel(kubun) {
+      if (kubun === "MT") return "見積書";
+      if (kubun === "DL") return "納品書";
+      if (kubun === "PO") return "発注書";
+      return kubun;
     }
 
-    // ----------------------------
-    // 取引先一覧
-    // ----------------------------
-    async function loadTorihikisaki() {
-      const { data } = await supabase
-        .from("torihikisaki")
-        .select("id, name")
-        .order("id");
+    let gKubun = null;
+    let gId = null;
+    let gMode = null;
+    let gHinmokuAll = [];      // TK00000 用（MT/DL）
+    let gHinmokuByTori = {};   // 取引先別（PO 用）
 
-      const sel = document.getElementById("torihikisaki");
-      data.forEach(r => {
+    function setReadOnlyMode(isView) {
+      const ids = [
+        "document_date","torihikisaki_id","title",
+        "period_start","period_end","memo"
+      ];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.disabled = isView;
+      });
+      document.getElementById("btnAddRow").disabled = isView;
+      document.getElementById("btnSave").disabled = isView;
+      // 明細行の入力も制御
+      document.querySelectorAll("#detailBody input, #detailBody select, #detailBody button").forEach(el => {
+        el.disabled = isView;
+      });
+    }
+
+    async function loadTorihikisakiList() {
+      const { data, error } = await supabase
+        .from("torihikisaki")
+        .select("id,name")
+        .order("id");
+      if (error) { alert("取引先取得エラー: " + error.message); return; }
+      const sel = document.getElementById("torihikisaki_id");
+      sel.innerHTML = "";
+      data.forEach(t => {
         const opt = document.createElement("option");
-        opt.value = r.id;
-        opt.textContent = r.name;
+        opt.value = t.id;
+        opt.textContent = `${t.id} ${t.name}`;
         sel.appendChild(opt);
       });
     }
 
-    // ----------------------------
-    // ヘッダ初期値
-    // ----------------------------
-    function setDefaultHeader() {
-      const today = new Date();
-      document.getElementById("document_date").value = formatDate(today);
-      if (kubun === "MT") document.getElementById("title").value = "見積書";
-    }
-
-    function formatDate(d) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-
-    // ----------------------------
-    // 既存データ読み込み（編集モード）
-    // ----------------------------
-    async function loadExistingDocument(id) {
-
-      // document 取得
-      const { data: doc, error: docErr } = await supabase
-        .from("document")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (docErr || !doc) {
-        alert("データ取得エラー: " + docErr?.message);
-        return;
-      }
-
-      // ヘッダ反映
-      document.getElementById("torihikisaki").value = doc.torihikisaki_id;
-      document.getElementById("document_date").value = doc.document_date;
-      document.getElementById("title").value = doc.title;
-      document.getElementById("memo").value = doc.memo ?? "";
-
-      // 明細取得
-      const { data: details, error: detErr } = await supabase
-        .from("document_detail")
-        .select("*")
-        .eq("document_id", id)
-        .order("id");
-
-      if (detErr) {
-        alert("明細取得エラー: " + detErr.message);
-        return;
-      }
-
-      // 明細追加
-      for (const d of details) {
-        addDetail(
-          d.hinmoku_id ?? "",
-          d.item,
-          d.price,
-          d.unit,
-          d.tax_rate
-        );
-
-        const tr = document.querySelector("#detail_body tr:last-child");
-
-        tr.children[1].children[0].value = d.quantity;
-        tr.children[2].children[0].value = d.price.toLocaleString();
-        tr.children[4].children[0].value = d.unit;
-        tr.children[5].children[0].value = d.tax_rate;
-
-        recalc(tr.children[1].children[0]);
-      }
-
-      calcTotal();
-    }
-
-    // ----------------------------
-    // 品目TBL（税率も取得）
-    // ----------------------------
-    async function loadItemMaster() {
-      if (mode === "view") return; // view モードでは不要
-
+    async function loadHinmokuForMTDL() {
       const { data, error } = await supabase
         .from("hinmoku")
-        .select("id, name, price, unit, tax_rate")
+        .select("id, name, unit, price, tax_rate, torihikisaki_id")
         .eq("torihikisaki_id", "TK00000")
         .order("id");
-
-      if (error) {
-        alert("品目取得エラー: " + error.message);
-        return;
-      }
-
-      const area = document.getElementById("item_list");
-      data.forEach(r => {
-        const div = document.createElement("div");
-        div.className = "item-row";
-        div.innerHTML = `
-          <button onclick="addDetail('${r.id}', '${r.name}', ${r.price}, '${r.unit}', ${r.tax_rate})">
-            追加
-          </button>
-          ${r.name}（${r.price.toLocaleString()} 円 / ${r.unit} / 税率:${r.tax_rate}%）
-        `;
-        area.appendChild(div);
-      });
+      if (error) { alert("品目取得エラー: " + error.message); return; }
+      gHinmokuAll = data || [];
     }
 
-    // ----------------------------
-    // 明細追加（全項目編集可能）
-    // ----------------------------
-    window.addDetail = function(id, name, price, unit, tax_rate) {
-      const tbody = document.getElementById("detail_body");
+    async function loadHinmokuForPO(torihikisaki_id) {
+      if (!torihikisaki_id) return;
+      if (gHinmokuByTori[torihikisaki_id]) return; // キャッシュ
+      const { data, error } = await supabase
+        .from("hinmoku")
+        .select("id, name, unit, price, tax_rate, torihikisaki_id")
+        .eq("torihikisaki_id", torihikisaki_id)
+        .order("id");
+      if (error) { alert("品目取得エラー: " + error.message); return; }
+      gHinmokuByTori[torihikisaki_id] = data || [];
+    }
 
+    function getHinmokuListForCurrent() {
+      if (gKubun === "PO") {
+        const tId = document.getElementById("torihikisaki_id").value;
+        return gHinmokuByTori[tId] || [];
+      } else {
+        return gHinmokuAll || [];
+      }
+    }
+
+    function createDetailRow(detail = null) {
+      const tbody = document.getElementById("detailBody");
       const tr = document.createElement("tr");
-      tr.dataset.hinmokuId = id;
 
-      tr.innerHTML = `
-        <td><input type="text" value="${name}"></td>
-        <td><input type="text" class="num" value="1" oninput="recalc(this)"></td>
-        <td><input type="text" class="num" value="${price.toLocaleString()}" oninput="recalc(this)"></td>
-        <td class="amount num">0</td>
-        <td><input type="text" value="${unit}"></td>
-        <td><input type="text" class="num" value="${tax_rate}" oninput="recalc(this)"></td>
-        <td><button onclick="this.closest('tr').remove(); calcTotal();">削除</button></td>
-      `;
+      const idxTd = document.createElement("td");
+      idxTd.textContent = tbody.children.length + 1;
+      tr.appendChild(idxTd);
+
+      const hinTd = document.createElement("td");
+      const sel = document.createElement("select");
+      sel.className = "hinmoku";
+      hinTd.appendChild(sel);
+      tr.appendChild(hinTd);
+
+      const qtyTd = document.createElement("td");
+      const qty = document.createElement("input");
+      qty.type = "number";
+      qty.step = "0.01";
+      qty.className = "qty";
+      qtyTd.appendChild(qty);
+      tr.appendChild(qtyTd);
+
+      const unitTd = document.createElement("td");
+      const unit = document.createElement("input");
+      unit.type = "text";
+      unit.className = "unit";
+      unitTd.appendChild(unit);
+      tr.appendChild(unitTd);
+
+      const priceTd = document.createElement("td");
+      const price = document.createElement("input");
+      price.type = "number";
+      price.step = "1";
+      price.className = "price";
+      priceTd.appendChild(price);
+      tr.appendChild(priceTd);
+
+      const amountTd = document.createElement("td");
+      const amount = document.createElement("input");
+      amount.type = "number";
+      amount.step = "1";
+      amount.className = "amount";
+      amount.readOnly = true;
+      amountTd.appendChild(amount);
+      tr.appendChild(amountTd);
+
+      const taxTd = document.createElement("td");
+      const tax = document.createElement("input");
+      tax.type = "number";
+      tax.step = "1";
+      tax.className = "tax_rate";
+      taxTd.appendChild(tax);
+      tr.appendChild(taxTd);
+
+      const opTd = document.createElement("td");
+      const btnDel = document.createElement("button");
+      btnDel.type = "button";
+      btnDel.textContent = "削除";
+      btnDel.addEventListener("click", () => {
+        tr.remove();
+        renumberRows();
+        recalcTotal();
+      });
+      opTd.appendChild(btnDel);
+      tr.appendChild(opTd);
+
       tbody.appendChild(tr);
 
-      recalc(tr.querySelector("input"));
-    };
+      // 品目リスト設定
+      refreshHinmokuSelect(sel);
 
-    // ----------------------------
-    // 金額再計算（カンマ対応）
-    // ----------------------------
-    window.recalc = function(elm) {
-      const tr = elm.closest("tr");
-
-      const qty = Number(tr.children[1].children[0].value.replace(/,/g, ""));
-      const price = Number(tr.children[2].children[0].value.replace(/,/g, ""));
-
-      const amount = qty * price;
-      tr.querySelector(".amount").textContent = amount.toLocaleString();
-
-      calcTotal();
-    };
-
-    function calcTotal() {
-      let sum = 0;
-      document.querySelectorAll(".amount").forEach(td => {
-        sum += Number(td.textContent.replace(/,/g, ""));
+      // イベント
+      sel.addEventListener("change", () => {
+        const list = getHinmokuListForCurrent();
+        const h = list.find(x => x.id === sel.value);
+        if (h) {
+          unit.value = h.unit || "";
+          price.value = h.price ?? "";
+          tax.value = h.tax_rate ?? "";
+        }
+        recalcRow(tr);
       });
-      document.getElementById("total").textContent = sum.toLocaleString();
+      [qty, price].forEach(el => {
+        el.addEventListener("input", () => recalcRow(tr));
+      });
+
+      // 初期値
+      if (detail) {
+        sel.value = detail.hinmoku_id || "";
+        qty.value = detail.quantity ?? "";
+        unit.value = detail.unit ?? "";
+        price.value = detail.price ?? "";
+        amount.value = detail.amount ?? "";
+        tax.value = detail.tax_rate ?? "";
+      }
+
+      recalcRow(tr);
     }
 
-    window.calcTotal = calcTotal;
+    function refreshHinmokuSelect(sel) {
+      const list = getHinmokuListForCurrent();
+      const current = sel.value;
+      sel.innerHTML = "";
+      const optEmpty = document.createElement("option");
+      optEmpty.value = "";
+      optEmpty.textContent = "";
+      sel.appendChild(optEmpty);
+      list.forEach(h => {
+        const opt = document.createElement("option");
+        opt.value = h.id;
+        opt.textContent = `${h.id} ${h.name}`;
+        sel.appendChild(opt);
+      });
+      if (current) sel.value = current;
+    }
 
-    // ----------------------------
-    // 保存処理（新規 or 更新）
-    // ----------------------------
-    window.saveDocument = async function() {
-      if (mode === "view") return; // view モードでは保存不可
+    function renumberRows() {
+      const tbody = document.getElementById("detailBody");
+      [...tbody.children].forEach((tr, idx) => {
+        tr.children[0].textContent = idx + 1;
+      });
+    }
 
-      if (kubun !== "MT") {
-        alert("未対応の区分です");
-        return;
-      }
+    function recalcRow(tr) {
+      const qty = parseFloat(tr.querySelector(".qty").value || "0");
+      const price = parseFloat(tr.querySelector(".price").value || "0");
+      const amount = tr.querySelector(".amount");
+      const val = Math.round(qty * price);
+      amount.value = isNaN(val) ? "" : val;
+      recalcTotal();
+    }
 
-      if (docId) {
-        await updateMT(docId);
-      } else {
-        await saveMT();
-      }
-    };
+    function recalcTotal() {
+      const tbody = document.getElementById("detailBody");
+      let sum = 0;
+      [...tbody.children].forEach(tr => {
+        const a = parseFloat(tr.querySelector(".amount").value || "0");
+        if (!isNaN(a)) sum += a;
+      });
+      document.getElementById("totalCell").textContent = sum.toLocaleString();
+    }
 
-    // ----------------------------
-    // MT 新規作成（INSERT）
-    // ----------------------------
-    async function saveMT() {
-      const { data: user } = await supabase.auth.getUser();
-      const uid = user?.user?.id;
-
-      const torihikisaki_id = document.getElementById("torihikisaki").value;
-      const document_date = document.getElementById("document_date").value;
-      const title = document.getElementById("title").value;
-      const memo = document.getElementById("memo").value;
-
-      // 明細収集
-      const details = collectDetails();
-      if (details.length === 0) {
-        alert("明細がありません");
-        return;
-      }
-
-      // 採番
-      const { data: seq, error: seqErr } = await supabase.rpc(
-        "get_next_document_code",
-        { prefix: "MT", p_date: document_date }
-      );
-      if (seqErr) {
-        alert("採番エラー: " + seqErr.message);
-        return;
-      }
-
-      const newDocId = seq;
-
-      // document 登録
-      const { error: docErr } = await supabase
-        .from("document")
-        .insert({
-          id: newDocId,
-          torihikisaki_id,
-          document_date,
-          title,
-          total: details.reduce((s, d) => s + d.amount, 0),
-          memo,
-          created_by: uid,
-          updated_by: uid
+    function collectDetails() {
+      const tbody = document.getElementById("detailBody");
+      const list = [];
+      [...tbody.children].forEach(tr => {
+        const hinmoku_id = tr.querySelector(".hinmoku").value || null;
+        const qty = parseFloat(tr.querySelector(".qty").value || "0");
+        const unit = tr.querySelector(".unit").value || null;
+        const price = parseFloat(tr.querySelector(".price").value || "0");
+        const amount = parseFloat(tr.querySelector(".amount").value || "0");
+        const tax_rate = parseFloat(tr.querySelector(".tax_rate").value || "0");
+        if (!hinmoku_id && !qty && !price && !amount) return;
+        list.push({
+          hinmoku_id,
+          quantity: qty || null,
+          unit,
+          price: price || null,
+          amount: amount || null,
+          tax_rate: tax_rate || null
         });
-
-      if (docErr) {
-        alert("ヘッダ登録エラー: " + docErr.message);
-        return;
-      }
-
-      // 明細登録
-      await insertDetails(newDocId, details, uid);
-
-      alert("見積書を作成しました（番号: " + newDocId + "）");
-      location.href = "document-list.html?f=MT";
+      });
+      return list;
     }
 
-    // ----------------------------
-    // MT 更新（UPDATE）
-    // ----------------------------
-    async function updateMT(id) {
+    async function insertDetails(document_id, details, uid) {
+      if (!details.length) return;
+      const rows = details.map((d, idx) => ({
+        document_id,
+        line_no: idx + 1,
+        hinmoku_id: d.hinmoku_id,
+        item: null,
+        quantity: d.quantity,
+        unit: d.unit,
+        price: d.price,
+        amount: d.amount,
+        tax_rate: d.tax_rate,
+        created_by: uid,
+        updated_by: uid
+      }));
+      const { error } = await supabase.from("document_detail").insert(rows);
+      if (error) throw new Error(error.message);
+    }
+
+    async function onTorihikisakiChanged() {
+      const id = document.getElementById("torihikisaki_id").value;
+      if (!id) return;
+
+      // 発注（PO）の場合のみ品目リストを取引先で絞る
+      if (gKubun === "PO") {
+        await loadHinmokuForPO(id);
+        document.querySelectorAll(".hinmoku").forEach(sel => {
+          refreshHinmokuSelect(sel);
+        });
+      }
+
+      // 取引先情報コピー
+      const { data, error } = await supabase
+        .from("torihikisaki")
+        .select("name, department, person, invoice_number")
+        .eq("id", id)
+        .single();
+      if (error) return;
+      document.getElementById("name").value = data.name || "";
+      document.getElementById("department").value = data.department || "";
+      document.getElementById("person").value = data.person || "";
+      document.getElementById("invoice_number").value = data.invoice_number || "";
+    }
+
+    async function loadDocument() {
+      if (!gId) return;
+      const { data, error } = await supabase
+        .from("document")
+        .select(`
+          id, torihikisaki_id, title, document_date,
+          period_start, period_end, total,
+          name, department, person, invoice_number, memo
+        `)
+        .eq("id", gId)
+        .single();
+      if (error) { alert("帳票取得エラー: " + error.message); return; }
+
+      document.getElementById("document_id").value = data.id;
+      document.getElementById("torihikisaki_id").value = data.torihikisaki_id || "";
+      document.getElementById("title").value = data.title || "";
+      document.getElementById("document_date").value = data.document_date || "";
+      document.getElementById("period_start").value = data.period_start || "";
+      document.getElementById("period_end").value = data.period_end || "";
+      document.getElementById("memo").value = data.memo || "";
+      document.getElementById("name").value = data.name || "";
+      document.getElementById("department").value = data.department || "";
+      document.getElementById("person").value = data.person || "";
+      document.getElementById("invoice_number").value = data.invoice_number || "";
+
+      const { data: details, error: detErr } = await supabase
+        .from("document_detail")
+        .select("hinmoku_id, quantity, unit, price, amount, tax_rate")
+        .eq("document_id", gId)
+        .order("line_no");
+      if (detErr) { alert("明細取得エラー: " + detErr.message); return; }
+
+      document.getElementById("detailBody").innerHTML = "";
+      if (details && details.length) {
+        for (const d of details) {
+          createDetailRow(d);
+        }
+      } else {
+        createDetailRow();
+      }
+      recalcTotal();
+    }
+
+    async function saveDocument() {
       const { data: user } = await supabase.auth.getUser();
       const uid = user?.user?.id;
+      if (!uid) { alert("未認証です"); return; }
 
-      const torihikisaki_id = document.getElementById("torihikisaki").value;
+      const torihikisaki_id = document.getElementById("torihikisaki_id").value;
       const document_date = document.getElementById("document_date").value;
       const title = document.getElementById("title").value;
       const memo = document.getElementById("memo").value;
+      const period_start = document.getElementById("period_start").value || null;
+      const period_end = document.getElementById("period_end").value || null;
 
       const details = collectDetails();
-      if (details.length === 0) {
+      if (!details.length) {
         alert("明細がありません");
         return;
       }
 
-      // document 更新
+      const total = details.reduce((s, d) => s + (d.amount || 0), 0);
+
       const { data, error: docErr } = await supabase
         .from("document")
         .update({
           torihikisaki_id,
           document_date,
           title,
-          total: details.reduce((s, d) => s + d.amount, 0),
+          period_start,
+          period_end,
+          total,
           memo,
           updated_by: uid,
           updated_at: new Date()
         })
-        .eq("id", id)
+        .eq("id", gId)
         .select();
 
       if (docErr) {
@@ -372,125 +508,52 @@
         alert("更新対象が存在しません");
         return;
       }
-      // 既存明細削除
-      await supabase.from("document_detail").delete().eq("document_id", id);
 
-      // 明細再登録
-      await insertDetails(id, details, uid);
+      await supabase.from("document_detail").delete().eq("document_id", gId);
+      await insertDetails(gId, details, uid);
 
-      alert("見積書を更新しました");
-      location.href = "document-list.html?f=MT";
+      alert(getKubunLabel(gKubun) + "を更新しました");
+      location.href = `document-list.html?kubun=${gKubun}`;
     }
 
-    // ----------------------------
-    // 明細収集（hinmoku_id 対応）
-    // ----------------------------
-    function collectDetails() {
-      const details = [];
-      document.querySelectorAll("#detail_body tr").forEach(tr => {
-        const item = tr.children[0].children[0].value;
-        const qty = Number(tr.children[1].children[0].value.replace(/,/g, ""));
-        const price = Number(tr.children[2].children[0].value.replace(/,/g, ""));
-        const amount = Number(tr.querySelector(".amount").textContent.replace(/,/g, ""));
-        const unit = tr.children[4].children[0].value;
-        const tax_rate = Number(tr.children[5].children[0].value);
-        const hinmoku_id = tr.dataset.hinmokuId || null;
+    window.addEventListener("DOMContentLoaded", async () => {
+      const ok = await checkLogin();
+      if (!ok) return;
 
-        details.push({ item, qty, price, amount, unit, tax_rate, hinmoku_id });
+      const params = new URLSearchParams(location.search);
+      gKubun = params.get("kubun") || "MT";
+      gId = params.get("id") || null;
+      gMode = params.get("mode") || "edit";
+
+      document.getElementById("kubunLabel").value = getKubunLabel(gKubun);
+      document.getElementById("pageTitle").textContent = getKubunLabel(gKubun) + " 編集";
+
+      await loadTorihikisakiList();
+      await loadHinmokuForMTDL(); // MT/DL 用（TK00000）
+
+      document.getElementById("torihikisaki_id").addEventListener("change", onTorihikisakiChanged);
+      document.getElementById("btnAddRow").addEventListener("click", () => createDetailRow());
+      document.getElementById("btnSave").addEventListener("click", saveDocument);
+      document.getElementById("btnBack").addEventListener("click", () => {
+        location.href = `document-list.html?kubun=${gKubun}`;
       });
-      return details;
-    }
 
-    // ----------------------------
-    // 明細登録（INSERT）
-    // ----------------------------
-    async function insertDetails(docId, details, uid) {
-      for (let d of details) {
-        const { data: detId } = await supabase.rpc(
-          "get_next_document_detail_id",
-          { doc_id: docId }
-        );
-
-        await supabase.from("document_detail").insert({
-          id: detId,
-          document_id: docId,
-          hinmoku_id: d.hinmoku_id,   // ← 追加
-          item: d.item,
-          quantity: d.qty,
-          price: d.price,
-          amount: d.amount,
-          unit: d.unit,
-          tax_rate: d.tax_rate,
-          created_by: uid,
-          updated_by: uid
-        });
+      if (gId) {
+        await loadDocument();
+      } else {
+        document.getElementById("detailBody").innerHTML = "";
+        createDetailRow();
       }
-    }
 
+      if (gMode === "view") {
+        setReadOnlyMode(true);
+      }
+
+      // MT/DL は品目リスト固定（TK00000）、PO は取引先変更で絞り込み
+      if (gKubun === "PO") {
+        await onTorihikisakiChanged();
+      }
+    });
   </script>
-
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px; }
-    .item-row { margin: 5px 0; }
-    input.num { text-align: right; }
-    td.num { text-align: right; }
-  </style>
-</head>
-
-<body>
-
-<h2 id="title_page">帳票作成</h2>
-
-<div>
-  <label>取引先:
-    <select id="torihikisaki"></select>
-  </label>
-  <br><br>
-
-  <label>発行日:
-    <input type="date" id="document_date">
-  </label>
-  <br><br>
-
-  <label>表題:
-    <input type="text" id="title" size="40">
-  </label>
-  <br><br>
-
-  <label>メモ:
-    <textarea id="memo" rows="3" cols="50"></textarea>
-  </label>
-</div>
-
-<hr>
-
-<h3>明細追加（品目TBL）</h3>
-<div id="item_list"></div>
-
-<hr>
-
-<h3>明細</h3>
-<table>
-  <thead>
-    <tr>
-      <th>品目</th>
-      <th>数量</th>
-      <th>単価</th>
-      <th>金額</th>
-      <th>単位</th>
-      <th>税率</th>
-      <th>操作</th>
-    </tr>
-  </thead>
-  <tbody id="detail_body"></tbody>
-</table>
-
-<h3>合計: <span id="total">0</span> 円</h3>
-
-<button onclick="saveDocument()">保存</button>
-<button id="back_button" onclick="location.href='index.html'">メニューへ</button>
-
 </body>
 </html>
