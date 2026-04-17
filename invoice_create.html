@@ -286,96 +286,81 @@
     // ----------------------------
     async function createDelivery() {
       if (!confirm("選択した内容で納品書を作成します。")) return;
-
-      // 選択された掛金を集める
-      const selectedRows = [];
-      for (const tid in previewData) {
-        previewData[tid].rows.forEach(r=>{
-          if (r.selected) selectedRows.push(r);
-        });
-      }
-      if (!selectedRows.length) {
-        alert("選択がありません");
-        return;
-      }
-
-      // ★ 対象期間開始＝最小 ship_date
-      const period_start = selectedRows.reduce(
-        (min,r)=> r.ship_date < min ? r.ship_date : min,
-        selectedRows[0].ship_date
-      );
-
-      // ★ 対象期間終了＝最大 delivery_date
-      const period_end = selectedRows.reduce(
-        (max,r)=> r.delivery_date > max ? r.delivery_date : max,
-        selectedRows[0].delivery_date
-      );
-
-      // ★ 納品書番号採番
-      const doc_date = document.getElementById("doc_date").value;
-      const { data: seq, error: seqErr } = await supabase.rpc(
-        "get_next_document_code",
-        { prefix: "DL", p_date: doc_date }
-      );
-      if (seqErr) { alert(seqErr.message); return; }
-
-      const newDocId = seq;
-
-      // ★ document 登録
+    
       const { data: user } = await supabase.auth.getUser();
       const uid = user.user.id;
-
-      const torihikisaki_id = selectedRows[0].torihikisaki_id;
-
-      const { error: docErr } = await supabase.from("document").insert({
-        id: newDocId,
-        torihikisaki_id,
-        document_date: doc_date,
-        title: "納品書",
-        period_start,
-        period_end,
-        total: selectedRows.reduce((s,r)=>s+Number(r.amount),0),
-        memo: "",
-        created_by: uid,
-        updated_by: uid
-      });
-      if (docErr) { alert(docErr.message); return; }
-
-      // ----------------------------
-      // ★ document_detail 登録（Null 安全化＋全項目コピー）
-      // ----------------------------
-      for (const r of selectedRows) {
-        const { data: detId } = await supabase.rpc(
-          "get_next_document_detail_id",
-          { doc_id: newDocId }
+    
+      // ★ 会社ごとに処理する
+      for (const tid in previewData) {
+    
+        // この会社の選択された行だけ抽出
+        const rows = previewData[tid].rows.filter(r => r.selected);
+        if (!rows.length) continue;
+    
+        // ★ 対象期間開始＝最小 ship_date
+        const shipDates = rows.map(r => r.ship_date).filter(d => d);
+        const period_start = shipDates.length
+          ? shipDates.reduce((min, d) => d < min ? d : min)
+          : null;
+    
+        // ★ 対象期間終了＝最大 delivery_date
+        const deliveryDates = rows.map(r => r.delivery_date).filter(d => d);
+        const period_end = deliveryDates.length
+          ? deliveryDates.reduce((max, d) => d > max ? d : max)
+          : null;
+    
+        // ★ 納品書番号採番
+        const doc_date = document.getElementById("doc_date").value;
+        const { data: seq } = await supabase.rpc(
+          "get_next_document_code",
+          { prefix: "DL", p_date: doc_date }
         );
-
-        const safe = {
-          hinmoku_id: r.hinmoku_id ?? null,
-          item: r.item ?? "",
-          quantity: Number(r.quantity ?? 0),
-          price: Number(r.price ?? 0),
-          amount: Number(r.amount ?? 0),
-          unit: r.unit ?? "",
-          tax_rate: Number(r.tax_rate ?? 0),
-          delivery_date: r.delivery_date ?? null
-        };
-
-        await supabase.from("document_detail").insert({
-          id: detId,
-          document_id: newDocId,
-          ...safe,
+        const newDocId = seq;
+    
+        // ★ document 登録（会社ごとに 1 件）
+        await supabase.from("document").insert({
+          id: newDocId,
+          torihikisaki_id: tid,
+          document_date: doc_date,
+          title: "納品書",
+          period_start,
+          period_end,
+          total: rows.reduce((s,r)=>s+Number(r.amount),0),
+          memo: "",
           created_by: uid,
           updated_by: uid
         });
-
-        // ★ 掛金に納品書番号を設定
-        await supabase.from("kakekin")
-          .update({ nouhin_no: newDocId })
-          .eq("id", r.kakekin_id);
+    
+        // ★ document_detail 登録（この会社の行だけ）
+        for (const r of rows) {
+          const { data: detId } = await supabase.rpc(
+            "get_next_document_detail_id",
+            { doc_id: newDocId }
+          );
+    
+          await supabase.from("document_detail").insert({
+            id: detId,
+            document_id: newDocId,
+            hinmoku_id: r.hinmoku_id ?? null,
+            item: r.item ?? "",
+            quantity: Number(r.quantity ?? 0),
+            price: Number(r.price ?? 0),
+            amount: Number(r.amount ?? 0),
+            unit: r.unit ?? "",
+            tax_rate: Number(r.tax_rate ?? 0),
+            delivery_date: r.delivery_date ?? null,
+            created_by: uid,
+            updated_by: uid
+          });
+    
+          // ★ 掛金に納品書番号を設定
+          await supabase.from("kakekin")
+            .update({ nouhin_no: newDocId })
+            .eq("id", r.kakekin_id);
+        }
       }
-
-      alert("納品書を作成しました（番号: " + newDocId + "）");
+    
+      alert("納品書を作成しました");
     }
 
     window.loadPreview = loadPreview;
