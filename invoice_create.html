@@ -104,7 +104,8 @@
       const { data, error } = await supabase.rpc("preview_invoice", {
         p_start: start,
         p_end: end,
-        p_torihikisaki_id: tid
+        p_torihikisaki_id: tid,
+        p_mode: kubun   // ★ SE or DL を渡す
       });
       if (error) { alert(error.message); return; }
 
