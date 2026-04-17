@@ -39,6 +39,9 @@
       setupTitle();
       setInitialPeriod();
       await loadTorihikisaki();
+
+      // ★ DOM 完全描画後にプレビュー実行（初期表示対応）
+      setTimeout(() => loadPreview(), 0);
     });
 
     function setupTitle() {
@@ -49,7 +52,6 @@
         h2.textContent = "請求データ作成";
       }
     }
-    window.loadPreview = loadPreview;
 
     // ----------------------------
     // 当月の月初・月末をセット
