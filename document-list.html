@@ -194,8 +194,10 @@
       // 編集
       document.getElementById('btnEdit').disabled = (row.cancelFlag == 1 || row.mfDocumentId);
 
-      // MF連携
-      document.getElementById('btnMf').disabled = (row.cancelFlag == 1 || row.mfDocumentId);
+      // ★ MF連携（MT と SE の時だけ活性）
+      const isMfTarget = (row.kubun === 'MT' || row.kubun === 'SE');
+      document.getElementById('btnMf').disabled =
+        !(isMfTarget) || row.cancelFlag == 1 || row.mfDocumentId;
 
       // 取消
       document.getElementById('btnCancelDoc').disabled = (row.cancelFlag == 1);
