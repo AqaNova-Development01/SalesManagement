@@ -16,7 +16,7 @@
     // URL パラメータ
     // ----------------------------
     const params = new URLSearchParams(window.location.search);
-    const kubun = params.get("kubun");   // MT / PO / DL
+    const kubun = params.get("kubun");   // MT / PO / DL / SE
     const docId = params.get("id");      // 編集時のみ
     const mode = params.get("mode") || "edit";
 
@@ -48,21 +48,31 @@
       }
 
       // MT/PO の新規作成時のみ品目リスト表示
-      if (!docId && kubun === "MT") await loadItemMaster_MT();
+      if (kubun === "MT") await loadItemMaster_MT();
       if (!docId && kubun === "PO") await loadItemMaster_PO();
 
-      // ★ DL 編集モードは品目リスト非表示
+      // ★ DL/SE 編集モードは品目リスト非表示
       if (kubun === "DL" && docId) {
         document.getElementById("item_list").style.display = "none";
       }
+      if (kubun === "SE" && docId) {
+        document.getElementById("item_list").style.display = "none";
+      }
 
-      // ★ DL 編集モードは取引先IDを非活性
+      // ★ DL/SE 編集モードは取引先IDを非活性
       if (kubun === "DL" && docId) {
         document.getElementById("torihikisaki").disabled = true;
       }
+      if (kubun === "SE" && docId) {
+        document.getElementById("torihikisaki").disabled = true;
+      }
 
-      // ★ DL 編集モードは明細編集不可
+      // ★ DL/SE 編集モードは明細編集不可
       if (kubun === "DL" && docId) {
+        document.querySelectorAll("#detail_body input").forEach(el => el.disabled = true);
+        document.querySelectorAll("#detail_body button").forEach(btn => btn.style.display = "none");
+      }
+      if (kubun === "SE" && docId) {
         document.querySelectorAll("#detail_body input").forEach(el => el.disabled = true);
         document.querySelectorAll("#detail_body button").forEach(btn => btn.style.display = "none");
       }
@@ -133,6 +143,9 @@
       } else if (kubun === "DL") {
         document.getElementById("title_page").innerText = "納品書 作成";
         document.getElementById("title").value = "納品書";
+      } else if (kubun === "SE") {
+        document.getElementById("title_page").innerText = "請求書 作成";
+        document.getElementById("title").value = "請求書";
       }
     }
 
@@ -157,7 +170,8 @@
       document.getElementById("title_page").innerText =
         (kubun === "MT" ? "見積書" :
          kubun === "PO" ? "発注書" :
-         "納品書") + " 編集";
+         kubun === "DL" ? "納品書" :
+         "請求書") + " 編集";
 
       document.getElementById("torihikisaki").value = doc.torihikisaki_id;
       document.getElementById("document_date").value = doc.document_date;
@@ -308,6 +322,9 @@
       } else if (kubun === "DL") {
         if (docId) await updateDL(docId);
         else alert("納品書の新規作成は invoice_create から行ってください");
+      } else if (kubun === "SE") {
+        if (docId) await updateSE(docId);
+        else alert("請求書の新規作成は invoice_create から行ってください");
       }
     };
 
@@ -568,6 +585,44 @@
 
       alert("納品書を更新しました（ヘッダのみ）");
       location.href = "document-list.html?kubun=DL";
+    }
+
+    // ----------------------------
+    // DL 更新（ヘッダのみ更新）
+    // ----------------------------
+    async function updateSE(id) {
+      const { data: user } = await supabase.auth.getUser();
+      const uid = user?.user?.id;
+
+      const document_date = document.getElementById("document_date").value;
+      const title = document.getElementById("title").value;
+      const memo = document.getElementById("memo").value;
+      const period_start = document.getElementById("period_start").value || null;
+      const period_end = document.getElementById("period_end").value || null;
+
+      // ★ SE は取引先IDを更新しない
+      // ★ SE は明細を更新しない（DELETE/INSERT しない）
+
+      const { error } = await supabase
+        .from("document")
+        .update({
+          document_date,
+          title,
+          memo,
+          period_start,
+          period_end,
+          updated_by: uid,
+          updated_at: new Date()
+        })
+        .eq("id", id);
+
+      if (error) {
+        alert("請求書の更新に失敗しました: " + error.message);
+        return;
+      }
+
+      alert("請求書を更新しました（ヘッダのみ）");
+      location.href = "document-list.html?kubun=SE";
     }
 
   </script>
