@@ -47,6 +47,11 @@
         setDefaultHeader();
       }
 
+      if (kubun === "PO") {
+        document.getElementById("delivery_to_area").style.display = "block";
+        await loadDeliveryToList();
+      }
+
       // MT/PO の新規作成時のみ品目リスト表示
       if (kubun === "MT") await loadItemMaster_MT();
       if (!docId && kubun === "PO") await loadItemMaster_PO();
@@ -100,6 +105,44 @@
       document.getElementById("title_page").textContent += "（参照）";
     }
 
+    // ----------------------------
+    // 納品先リスト表示
+    // ----------------------------
+    async function loadDeliveryToList() {
+      const { data } = await supabase
+        .from("torihikisaki")
+        .select("id, name, zip, address1, address2, department, person")
+        .order("id");
+    
+      const sel = document.getElementById("delivery_to_select");
+      data.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = `${r.id} ${r.name}`;
+        opt.dataset.zip = r.zip || "";
+        opt.dataset.address1 = r.address1 || "";
+        opt.dataset.address2 = r.address2 || "";
+        opt.dataset.department = r.department || "";
+        opt.dataset.person = r.person || "";
+        sel.appendChild(opt);
+      });
+    }
+
+    // ----------------------------
+    // 納品先選択時処理
+    // ----------------------------
+    window.onDeliveryToSelect = function() {
+      const sel = document.getElementById("delivery_to_select");
+      const opt = sel.options[sel.selectedIndex];
+      if (!opt.value) return;
+    
+      document.getElementById("name").value = opt.textContent.split(" ").slice(1).join(" ");
+      document.getElementById("department").value = opt.dataset.department || "";
+      document.getElementById("person").value = opt.dataset.person || "";
+    
+      const addr = `〒${opt.dataset.zip} ${opt.dataset.address1}${opt.dataset.address2}`;
+      document.getElementById("invoice_number").value = addr;
+    };
     // ----------------------------
     // 取引先一覧
     // ----------------------------
@@ -179,6 +222,13 @@
       document.getElementById("memo").value = doc.memo ?? "";
       document.getElementById("period_start").value = doc.period_start ?? "";
       document.getElementById("period_end").value = doc.period_end ?? "";
+
+      if (kubun === "PO") {
+        document.getElementById("name").value = doc.name ?? "";
+        document.getElementById("department").value = doc.department ?? "";
+        document.getElementById("person").value = doc.person ?? "";
+        document.getElementById("invoice_number").value = doc.invoice_number ?? "";
+      }
 
       // 明細取得
       const { data: details } = await supabase
@@ -475,6 +525,12 @@
       const period_start = document.getElementById("period_start").value || null;
       const period_end = document.getElementById("period_end").value || null;
 
+      // ★ 送付先（納付先）
+      const name = document.getElementById("name").value;
+      const department = document.getElementById("department").value;
+      const person = document.getElementById("person").value;
+      const invoice_number = document.getElementById("invoice_number").value; // ←住所欄として利用
+
       const details = collectDetails();
       if (!details.length) {
         alert("明細がありません");
@@ -497,6 +553,13 @@
         period_end,
         total: details.reduce((s, d) => s + d.amount, 0),
         memo,
+
+        // ★ 送付先（納付先）を保存
+        name,
+        department,
+        person,
+        invoice_number,
+
         created_by: uid,
         updated_by: uid
       });
@@ -520,6 +583,11 @@
       const memo = document.getElementById("memo").value;
       const period_start = document.getElementById("period_start").value || null;
       const period_end = document.getElementById("period_end").value || null;
+      // ★ 送付先（納付先）
+      const name = document.getElementById("name").value;
+      const department = document.getElementById("department").value;
+      const person = document.getElementById("person").value;
+      const invoice_number = document.getElementById("invoice_number").value;
 
       const details = collectDetails();
       if (!details.length) {
@@ -537,6 +605,12 @@
           period_end,
           total: details.reduce((s, d) => s + d.amount, 0),
           memo,
+          // ★ 送付先（納付先）を更新
+          name,
+          department,
+          person,
+          invoice_number,
+
           updated_by: uid,
           updated_at: new Date()
         })
@@ -646,6 +720,35 @@
     <select id="torihikisaki" onchange="onTorihikisakiChange()"></select>
   </label>
   <br><br>
+  
+  <div id="delivery_to_area" style="display:none; margin-top:20px;">
+    <label>納付先（送付先）:
+      <select id="delivery_to_select" onchange="onDeliveryToSelect()">
+        <option value="">（選択してください）</option>
+      </select>
+    </label>
+    <br><br>
+  
+    <label>会社名:
+      <input type="text" id="name" size="40">
+    </label>
+    <br><br>
+  
+    <label>部署:
+      <input type="text" id="department" size="40">
+    </label>
+    <br><br>
+  
+    <label>担当者:
+      <input type="text" id="person" size="40">
+    </label>
+    <br><br>
+  
+    <label>住所（郵便番号＋住所）:
+      <input type="text" id="invoice_number" size="60">
+    </label>
+  </div>
+
 
   <label>発行日:
     <input type="date" id="document_date">
