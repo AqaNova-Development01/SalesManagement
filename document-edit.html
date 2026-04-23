@@ -228,6 +228,15 @@
         document.getElementById("department").value = doc.department ?? "";
         document.getElementById("person").value = doc.person ?? "";
         document.getElementById("invoice_number").value = doc.invoice_number ?? "";
+
+        // ★ ドロップダウンも選択状態にしたい場合（任意）
+        const sel = document.getElementById("delivery_to_select");
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].textContent.includes(doc.name)) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
       }
 
       // 明細取得
@@ -721,6 +730,27 @@
   </label>
   <br><br>
   
+
+  <label>発行日:
+    <input type="date" id="document_date">
+  </label>
+  <br><br>
+
+  <label>表題:
+    <input type="text" id="title" size="40">
+  </label>
+  <br><br>
+
+  <label>発送（工事開始）予定日:
+    <input type="date" id="period_start">
+  </label>
+  <br><br>
+
+  <label>納品（工事終了）予定日:
+    <input type="date" id="period_end">
+  </label>
+  <br><br>
+
   <div id="delivery_to_area" style="display:none; margin-top:20px;">
     <label>納付先（送付先）:
       <select id="delivery_to_select" onchange="onDeliveryToSelect()">
@@ -748,26 +778,6 @@
       <input type="text" id="invoice_number" size="60">
     </label>
   </div>
-
-
-  <label>発行日:
-    <input type="date" id="document_date">
-  </label>
-  <br><br>
-
-  <label>表題:
-    <input type="text" id="title" size="40">
-  </label>
-  <br><br>
-
-  <label>発送（工事開始）予定日:
-    <input type="date" id="period_start">
-  </label>
-  <br><br>
-
-  <label>納品（工事終了）予定日:
-    <input type="date" id="period_end">
-  </label>
   <br><br>
 
   <label>メモ:
