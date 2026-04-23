@@ -245,13 +245,17 @@
     // 履歴表示
     // ----------------------------
     async function loadHistory() {
-      const y = document.getElementById("year").value;
-      const m = document.getElementById("month").value.padStart(2, "0");
+  const y = document.getElementById("year").value;
+  const m = document.getElementById("month").value.padStart(2, "0");
 
-      const start = `${y}-${m}-01`;
-      // 翌月1日を作る（Date の month は 0 始まり）
-      const endObj = new Date(Number(y), Number(m), 1);
-      const end = endObj.toISOString().slice(0, 10);
+  const startObj = new Date(Date.UTC(Number(y), Number(m) - 1, 1));
+  const start = startObj.toISOString().slice(0, 10);
+
+  const endObj = new Date(Date.UTC(Number(y), Number(m), 1));
+  const end = endObj.toISOString().slice(0, 10);
+
+  console.log("start =", start, "end =", end);
+  alert(`start=${start}\nend=${end}`);
   // ★ デバッグ表示
   console.log("start =", start, "end =", end);
   alert(`start=${start}\nend=${end}`);
