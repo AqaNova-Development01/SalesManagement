@@ -246,7 +246,7 @@
     // ----------------------------
     async function loadHistory() {
       const y = document.getElementById("year").value;
-      const m = document.getElementById("month").value;
+      const m = document.getElementById("month").value.padStart(2, "0");
 
       const start = `${y}-${m}-01`;
       // 翌月1日を作る（Date の month は 0 始まり）
