@@ -252,7 +252,10 @@
       // 翌月1日を作る（Date の month は 0 始まり）
       const endObj = new Date(Number(y), Number(m), 1);
       const end = endObj.toISOString().slice(0, 10);
-
+  // ★ デバッグ表示
+  console.log("start =", start, "end =", end);
+  alert(`start=${start}\nend=${end}`);
+      
       const { data, error } = await supabase
         .from("torihiki")
         .select(`
