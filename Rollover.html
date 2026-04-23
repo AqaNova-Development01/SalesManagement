@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>年次ロールオーバー</title>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    input, button { padding: 8px; margin: 6px; }
+    #status { margin-top: 20px; font-weight: bold; }
+  </style>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+    import { saveAs } from "https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js";
+
+    // ----------------------------
+    // Supabase 初期化
+    // ----------------------------
+    const supabase = createClient(
+      "https://omzcbfjtwyygvvgxsiov.supabase.co",
+      "sb_publishable_Plndzp1kowyp6OgTwTGwHA_iUIO0ae0"
+    );
+
+    // ----------------------------
+    // ログインチェック
+    // ----------------------------
+    async function checkLogin() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+    // ----------------------------
+    // 年次ロールオーバー実行
+    // ----------------------------
+    async function runAnnualRollover() {
+      const cutoff = document.getElementById("cutoffDate").value;
+      const status = document.getElementById("status");
+
+      if (!cutoff) {
+        alert("基準日（前月末日）を入力してください");
+        return;
+      }
+
+      if (!confirm(`基準日 ${cutoff} で年次ロールオーバーを実行します。\nこの処理は元に戻せません。\nよろしいですか？`)) {
+        return;
+      }
+
+      status.innerText = "処理中…（残高作成 → CSV生成 → 削除）";
+
+      try {
+        // annual_rollover RPC 呼び出し
+        const { data, error } = await supabase.rpc("annual_rollover", {
+          p_cutoff: cutoff
+        });
+
+        if (error) {
+          console.error(error);
+          alert("ロールオーバー処理に失敗しました（処理はロールバックされています）");
+          status.innerText = "エラーが発生しました";
+          return;
+        }
+
+        status.innerText = "バックアップ ZIP を作成しています…";
+
+        // ZIP 作成
+        const zip = new JSZip();
+
+        for (const row of data) {
+          const binary = atob(row.csv_base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          zip.file(`${row.table_name}.csv`, bytes);
+        }
+
+        const content = await zip.generateAsync({ type: "blob" });
+        const filename = `backup_${cutoff.replace(/-/g, "")}.zip`;
+
+        saveAs(content, filename);
+
+        status.innerText = "完了しました（削除処理も正常に完了）";
+        alert("年次ロールオーバーが完了しました。\nバックアップ ZIP を保存してください。");
+
+      } catch (e) {
+        console.error(e);
+        alert("予期せぬエラーが発生しました（処理はロールバックされています）");
+        status.innerText = "エラーが発生しました";
+      }
+    }
+
+    // ----------------------------
+    // 初期処理
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!(await checkLogin())) return;
+
+      // デフォルトで前月末日をセット
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthEnd = new Date(first - 1);
+      document.getElementById("cutoffDate").value =
+        lastMonthEnd.toISOString().slice(0, 10);
+    });
+
+    window.runAnnualRollover = runAnnualRollover;
+  </script>
+</head>
+
+<body>
+
+  <h2>年次ロールオーバー</h2>
+
+  <p>基準日（前月末日）を指定して、年次ロールオーバーを実行します。</p>
+  <p>※ この処理は「繰越残高作成 → 全テーブルバックアップ → 基準日以前のデータ削除」を一括で行います。</p>
+
+  <label>基準日（前月末日）:</label>
+  <input type="date" id="cutoffDate">
+
+  <br><br>
+
+  <button onclick="runAnnualRollover()">年次ロールオーバー実行</button>
+  <button onclick="location.href='index.html'">メニューへ戻る</button>
+
+  <div id="status"></div>
+
+</body>
+</html>
