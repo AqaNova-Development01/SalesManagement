@@ -111,7 +111,7 @@
     async function loadDeliveryToList() {
       const { data } = await supabase
         .from("torihikisaki")
-        .select("id, name, zip, address1, address2, department, person")
+        .select("id, name, postal_code, address, department, person")
         .order("id");
     
       const sel = document.getElementById("delivery_to_select");
@@ -119,9 +119,8 @@
         const opt = document.createElement("option");
         opt.value = r.id;
         opt.textContent = `${r.id} ${r.name}`;
-        opt.dataset.zip = r.zip || "";
-        opt.dataset.address1 = r.address1 || "";
-        opt.dataset.address2 = r.address2 || "";
+        opt.dataset.postal_code = r.postal_code || "";
+        opt.dataset.address = r.address || "";
         opt.dataset.department = r.department || "";
         opt.dataset.person = r.person || "";
         sel.appendChild(opt);
