@@ -470,7 +470,7 @@
         for (const d of details) {
           const { data: newId, error: seqErr } = await supabase.rpc(
             'get_next_document_code',
-            { prefix: kbn, p_date: today }
+            { prefix: kbn, p_date: keijo_date }
           );
           if (seqErr) return window.showError('採番エラー: ' + seqErr.message);
 
