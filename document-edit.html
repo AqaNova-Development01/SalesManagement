@@ -41,15 +41,15 @@
 
       await loadTorihikisaki();
 
+      if (kubun === "PO") {
+        document.getElementById("delivery_to_area").style.display = "block";
+        await loadDeliveryToList();
+      }
+
       if (docId) {
         await loadExistingDocument(docId);
       } else {
         setDefaultHeader();
-      }
-
-      if (kubun === "PO") {
-        document.getElementById("delivery_to_area").style.display = "block";
-        await loadDeliveryToList();
       }
 
       // MT/PO の新規作成時のみ品目リスト表示
