@@ -139,9 +139,10 @@
       document.getElementById("department").value = opt.dataset.department || "";
       document.getElementById("person").value = opt.dataset.person || "";
     
-      const addr = `〒${opt.dataset.zip} ${opt.dataset.address1}${opt.dataset.address2}`;
+      const addr = `〒${opt.dataset.postal_code || ""} ${opt.dataset.address || ""}`;
       document.getElementById("invoice_number").value = addr;
     };
+
     // ----------------------------
     // 取引先一覧
     // ----------------------------
