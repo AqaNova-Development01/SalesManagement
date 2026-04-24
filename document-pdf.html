@@ -59,6 +59,17 @@
     font-size: 16px;
     font-weight: bold;
   }
+  .nav-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+  }
+  
+  @media print {
+    .nav-buttons {
+      display: none;
+    }
+  }
 </style>
 
 <script type="module">
@@ -245,6 +256,10 @@ async function loadPDFData() {
 
 <br>
 <button onclick="window.print()">PDF 印刷</button>
+<div class="nav-buttons">
+  <button onclick="location.href='index.html'">メニューへ戻る</button>
+  <button onclick="history.back()">一覧へ戻る</button>
+</div>
 
 </body>
 </html>
