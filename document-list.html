@@ -93,6 +93,7 @@
       <button id="btnCancelDoc">取消</button>
       <button id="btnUrKake">売掛登録</button>
       <button id="btnKiKake">買掛登録</button>
+      <button id="btnPdf">PDF</button>
       <button onclick="location.href='index.html'">メニューへ</button>
     </div>
   </div>
@@ -217,6 +218,8 @@
         document.getElementById('btnCancelDoc').disabled = true;
         return; // これ以降の通常ロジックは不要
       }
+      // ★ PDF（PO のときだけ活性）
+      document.getElementById('btnPdf').disabled = !(row.kubun === 'PO');
     }
 
     /* ============================
@@ -605,6 +608,19 @@
 
         await registerKakekin(row.id, 'KI');
       });
+
+      // ★ PDF 出力（PO のときのみ）
+      document.getElementById('btnPdf').addEventListener('click', () => {
+        const row = getSelectedRowData();
+        if (!row) return alert('行を選択してください');
+      
+        if (row.kubun !== 'PO') {
+          return alert('PDF 出力は発注書（PO）のみ対応です');
+        }
+      
+        location.href = `document-pdf.html?id=${row.id}`;
+      });
+
 
       /* ============================
          初期ロード
