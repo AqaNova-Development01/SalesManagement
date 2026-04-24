@@ -6,8 +6,8 @@
 
 <style>
   body {
-    font-family: sans-serif;
-    padding: 40px;
+    font-family: "Yu Gothic", sans-serif;
+    padding: 20px 40px;
     width: 800px;
     margin: auto;
   }
@@ -15,26 +15,24 @@
   h1 {
     text-align: right;
     font-size: 32px;
-    margin-bottom: 10px;
+    margin: 0;
   }
 
-  .header-box {
+  /* --- 枠線付きボックス --- */
+  .box {
+    border: 1px solid #000;
+    padding: 10px;
+    margin-top: 10px;
+  }
+
+  .flex-between {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 30px;
   }
 
-  .company-info {
-    font-size: 14px;
-    line-height: 1.6;
-  }
-
-  .section-title {
-    font-size: 18px;
-    margin-top: 25px;
-    margin-bottom: 5px;
-    border-bottom: 1px solid #000;
-    padding-bottom: 3px;
+  .label {
+    font-weight: bold;
+    margin-bottom: 4px;
   }
 
   table {
@@ -57,18 +55,9 @@
     text-align: right;
   }
 
-  .total-box {
-    margin-top: 20px;
-    text-align: right;
-    font-size: 20px;
+  .total-table td {
+    font-size: 16px;
     font-weight: bold;
-  }
-
-  .memo-box {
-    margin-top: 30px;
-    border: 1px solid #000;
-    padding: 10px;
-    min-height: 80px;
   }
 </style>
 
@@ -105,7 +94,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 // ----------------------------
 async function loadPDFData() {
 
-  // ★ 自社情報（TK00000）
+  /* --- 自社情報（TK00000） --- */
   const { data: my } = await supabase
     .from("torihikisaki")
     .select("*")
@@ -118,30 +107,38 @@ async function loadPDFData() {
   document.getElementById("my_tel").textContent = my.tel ?? "";
   document.getElementById("my_fax").textContent = my.fax ?? "";
 
-  // ★ 発注書ヘッダ
+  /* --- 発注書ヘッダ --- */
   const { data: doc } = await supabase
     .from("document")
     .select("*")
     .eq("id", docId)
     .single();
 
-  document.getElementById("title").textContent = doc.title;
   document.getElementById("document_date").textContent = doc.document_date;
   document.getElementById("doc_id").textContent = doc.id;
 
-  // 発注先（取引先 ID）
-  document.getElementById("torihikisaki_name").textContent = doc.torihikisaki_id;
+  /* --- 発注先（取引先） --- */
+  const { data: tori } = await supabase
+    .from("torihikisaki")
+    .select("*")
+    .eq("id", doc.torihikisaki_id)
+    .single();
 
-  // 納付先（送付先）
-  document.getElementById("name").textContent = doc.name ?? "";
-  document.getElementById("department").textContent = doc.department ?? "";
-  document.getElementById("person").textContent = doc.person ?? "";
-  document.getElementById("invoice_number").textContent = doc.invoice_number ?? "";
+  document.getElementById("tori_name").textContent = tori.name ?? "";
+  document.getElementById("tori_address").textContent =
+    `〒${tori.postal_code ?? ""} ${tori.address ?? ""}`;
+  document.getElementById("tori_department").textContent = tori.department ?? "";
+  document.getElementById("tori_person").textContent = tori.person ?? "";
+  document.getElementById("tori_tel").textContent = tori.tel ?? "";
+  document.getElementById("tori_fax").textContent = tori.fax ?? "";
 
-  // 備考
-  document.getElementById("memo").textContent = doc.memo ?? "";
+  /* --- 納付先（送付先） --- */
+  document.getElementById("delivery_name").textContent = doc.name ?? "";
+  document.getElementById("delivery_department").textContent = doc.department ?? "";
+  document.getElementById("delivery_person").textContent = doc.person ?? "";
+  document.getElementById("delivery_address").textContent = doc.invoice_number ?? "";
 
-  // 明細
+  /* --- 明細 --- */
   const { data: details } = await supabase
     .from("document_detail")
     .select("*")
@@ -149,21 +146,25 @@ async function loadPDFData() {
     .order("id");
 
   const tbody = document.getElementById("detail_body");
-  details.forEach(d => {
+  details.forEach((d, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>${i + 1}</td>
       <td>${d.item}</td>
       <td class="right">${d.quantity}</td>
+      <td>${d.unit}</td>
       <td class="right">${Number(d.price).toLocaleString()}</td>
       <td class="right">${Number(d.amount).toLocaleString()}</td>
-      <td>${d.unit}</td>
-      <td>${d.tax_rate}%</td>
+      <td>${d.memo ?? ""}</td>
     `;
     tbody.appendChild(tr);
   });
 
-  document.getElementById("total").textContent =
-    Number(doc.total).toLocaleString();
+  /* --- 合計 --- */
+  document.getElementById("total").textContent = Number(doc.total).toLocaleString();
+  document.getElementById("tax").textContent = Number(doc.total * 0.1).toLocaleString();
+  document.getElementById("grand_total").textContent =
+    Number(doc.total * 1.1).toLocaleString();
 }
 </script>
 </head>
@@ -171,61 +172,78 @@ async function loadPDFData() {
 <body>
 
 <!-- ★ ロゴ（後で差し替え可能） -->
-<!-- <img src="logo.png" style="width:150px; position:absolute; top:40px; left:40px;"> -->
+<!-- <img src="logo.png" style="width:120px; position:absolute; top:20px; left:20px;"> -->
 
-<!-- ★ 印影（後で差し替え可能） -->
-<!-- <img src="inkan.png" style="width:120px; position:absolute; top:40px; right:40px; opacity:0.85;"> -->
+<h1>発注書</h1>
 
-<h1 id="title">発注書</h1>
+<!-- 自社情報 -->
+<div class="box">
+  <div id="my_name" style="font-size:18px; font-weight:bold;"></div>
+  <div id="my_address"></div>
+  <div>TEL: <span id="my_tel"></span> / FAX: <span id="my_fax"></span></div>
+</div>
 
-<div class="header-box">
-  <div class="company-info">
-    <div id="my_name" style="font-size:20px; font-weight:bold;"></div>
-    <div id="my_address"></div>
-    <div>
-      TEL: <span id="my_tel"></span>
-      / FAX: <span id="my_fax"></span>
-    </div>
-  </div>
-
+<!-- 発注日・番号 -->
+<div class="flex-between" style="margin-top:10px;">
+  <div></div>
   <div>
-    <div>発行日：<span id="document_date"></span></div>
-    <div>発注番号：<span id="doc_id"></span></div>
+    発行日：<span id="document_date"></span><br>
+    発注番号：<span id="doc_id"></span>
   </div>
 </div>
 
-<div class="section-title">発注先（取引先）</div>
-<div id="torihikisaki_name"></div>
+<!-- 発注先 -->
+<div class="box">
+  <div class="label">発注先</div>
+  <div id="tori_name"></div>
+  <div id="tori_address"></div>
+  <div id="tori_department"></div>
+  <div id="tori_person"></div>
+  <div>TEL: <span id="tori_tel"></span> / FAX: <span id="tori_fax"></span></div>
+</div>
 
-<div class="section-title">納付先（送付先）</div>
-<div id="name"></div>
-<div id="department"></div>
-<div id="person"></div>
-<div id="invoice_number"></div>
+<!-- 納付先 -->
+<div class="box">
+  <div class="label">納付先（送付先）</div>
+  <div id="delivery_name"></div>
+  <div id="delivery_department"></div>
+  <div id="delivery_person"></div>
+  <div id="delivery_address"></div>
+</div>
 
-<div class="section-title">明細</div>
+<!-- 明細 -->
 <table>
   <thead>
     <tr>
-      <th>品目</th>
+      <th>No.</th>
+      <th>品名</th>
       <th>数量</th>
+      <th>単位</th>
       <th>単価</th>
       <th>金額</th>
-      <th>単位</th>
-      <th>税率</th>
+      <th>備考</th>
     </tr>
   </thead>
   <tbody id="detail_body"></tbody>
 </table>
 
-<div class="total-box">
-  合計：<span id="total"></span> 円
-</div>
+<!-- 合計 -->
+<table class="total-table" style="margin-top:20px;">
+  <tr>
+    <td style="width:150px;">合計</td>
+    <td class="right"><span id="total"></span> 円</td>
+  </tr>
+  <tr>
+    <td>消費税（10%）</td>
+    <td class="right"><span id="tax"></span> 円</td>
+  </tr>
+  <tr>
+    <td>合計金額</td>
+    <td class="right"><span id="grand_total"></span> 円</td>
+  </tr>
+</table>
 
-<div class="section-title">備考</div>
-<div class="memo-box" id="memo"></div>
-
-<br><br>
+<br>
 <button onclick="window.print()">PDF 印刷</button>
 
 </body>
