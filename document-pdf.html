@@ -13,7 +13,7 @@
   }
 
   h1 {
-    text-align: right;
+    text-align: center;
     font-size: 32px;
     margin: 0;
   }
@@ -110,6 +110,8 @@ async function loadPDFData() {
   document.getElementById("my_name").textContent = my.name;
   document.getElementById("my_address").textContent =
     `〒${my.postal_code ?? ""} ${my.address ?? ""}`;
+  document.getElementById("my_tel").textContent = my.tel ?? "";
+  document.getElementById("my_fax").textContent = my.fax ?? "";
 
   /* --- 発注書ヘッダ --- */
   const { data: doc } = await supabase
@@ -136,10 +138,10 @@ async function loadPDFData() {
     `〒${tori.postal_code ?? ""} ${tori.address ?? ""}`;
 
   /* --- 納入先（送付先） --- */
-  document.getElementById("delivery_name").textContent = doc.name ?? "";
-  document.getElementById("delivery_department").textContent = doc.department ?? "";
-  document.getElementById("delivery_person").textContent = doc.person ?? "";
-  document.getElementById("delivery_address").textContent = doc.invoice_number ?? "";
+  document.getElementById("delivery_name").textContent = doc.name || " ";
+  document.getElementById("delivery_department").textContent = doc.department || " ";
+  document.getElementById("delivery_person").textContent = doc.person || " ";
+  document.getElementById("delivery_address").textContent = doc.invoice_number || " ";
 
   /* --- 明細 --- */
   const { data: details } = await supabase
@@ -176,18 +178,19 @@ async function loadPDFData() {
 
 <h1>発注書</h1>
 
-<!-- 発注先（左）＋ 自社（右） -->
+<!-- 発注先（左）＋ 発注元（右） -->
 <div class="flex">
   <div class="box">
-    <div class="label">発注先</div>
-    <div id="tori_name"></div>
-    <div id="tori_address"></div>
+    <div id="tori_name" style="font-size:18px; font-weight:bold;"></div>
+    <div id="tori_address" style="font-size:13px;"></div>
   </div>
 
   <div class="box">
-    <div class="label">発注元</div>
-    <div id="my_name"></div>
-    <div id="my_address"></div>
+    <div id="my_name" style="font-size:16px; font-weight:bold;"></div>
+    <div id="my_address" style="font-size:13px;"></div>
+    <div style="font-size:13px;">
+      TEL: <span id="my_tel"></span> / FAX: <span id="my_fax"></span>
+    </div>
   </div>
 </div>
 
@@ -218,14 +221,14 @@ async function loadPDFData() {
   <tbody id="detail_body"></tbody>
 </table>
 
-<!-- 納入先（左）＋ 合計（右） -->
+<!-- 納入先（左）＋ 合計欄（右） -->
 <div class="total-area">
   <div class="box" style="flex:1;">
     <div class="label">納入先</div>
-    <div id="delivery_name"></div>
-    <div id="delivery_department"></div>
-    <div id="delivery_person"></div>
-    <div id="delivery_address"></div>
+    <div id="delivery_name">&nbsp;</div>
+    <div id="delivery_department">&nbsp;</div>
+    <div id="delivery_person">&nbsp;</div>
+    <div id="delivery_address">&nbsp;</div>
   </div>
 
   <table class="total-table" style="flex:1;">
