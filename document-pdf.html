@@ -18,16 +18,15 @@
     margin: 0;
   }
 
-  /* --- 枠線付きボックス --- */
+  .flex {
+    display: flex;
+    gap: 10px;
+  }
+
   .box {
     border: 1px solid #000;
     padding: 10px;
-    margin-top: 10px;
-  }
-
-  .flex-between {
-    display: flex;
-    justify-content: space-between;
+    flex: 1;
   }
 
   .label {
@@ -55,18 +54,20 @@
     text-align: right;
   }
 
+  .total-area {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
   .total-table td {
     font-size: 16px;
     font-weight: bold;
   }
-  .nav-buttons {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-  }
-  
+
+  /* 印刷時にボタン非表示 */
   @media print {
-    .nav-buttons {
+    .nav-buttons, #printBtn {
       display: none;
     }
   }
@@ -83,9 +84,6 @@ const supabase = createClient(
 const params = new URLSearchParams(window.location.search);
 const docId = params.get("id");
 
-// ----------------------------
-// ログインチェック
-// ----------------------------
 async function checkLogin() {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
@@ -100,9 +98,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   await loadPDFData();
 });
 
-// ----------------------------
-// PDF データ読み込み
-// ----------------------------
 async function loadPDFData() {
 
   /* --- 自社情報（TK00000） --- */
@@ -115,8 +110,6 @@ async function loadPDFData() {
   document.getElementById("my_name").textContent = my.name;
   document.getElementById("my_address").textContent =
     `〒${my.postal_code ?? ""} ${my.address ?? ""}`;
-  document.getElementById("my_tel").textContent = my.tel ?? "";
-  document.getElementById("my_fax").textContent = my.fax ?? "";
 
   /* --- 発注書ヘッダ --- */
   const { data: doc } = await supabase
@@ -135,15 +128,14 @@ async function loadPDFData() {
     .eq("id", doc.torihikisaki_id)
     .single();
 
-  document.getElementById("tori_name").textContent = tori.name ?? "";
+  const tori_full =
+    `${tori.name ?? ""} ${tori.department ?? ""} 御中`;
+
+  document.getElementById("tori_name").textContent = tori_full;
   document.getElementById("tori_address").textContent =
     `〒${tori.postal_code ?? ""} ${tori.address ?? ""}`;
-  document.getElementById("tori_department").textContent = tori.department ?? "";
-  document.getElementById("tori_person").textContent = tori.person ?? "";
-  document.getElementById("tori_tel").textContent = tori.tel ?? "";
-  document.getElementById("tori_fax").textContent = tori.fax ?? "";
 
-  /* --- 納付先（送付先） --- */
+  /* --- 納入先（送付先） --- */
   document.getElementById("delivery_name").textContent = doc.name ?? "";
   document.getElementById("delivery_department").textContent = doc.department ?? "";
   document.getElementById("delivery_person").textContent = doc.person ?? "";
@@ -182,44 +174,32 @@ async function loadPDFData() {
 
 <body>
 
-<!-- ★ ロゴ（後で差し替え可能） -->
-<!-- <img src="logo.png" style="width:120px; position:absolute; top:20px; left:20px;"> -->
-
 <h1>発注書</h1>
 
-<!-- 自社情報 -->
-<div class="box">
-  <div id="my_name" style="font-size:18px; font-weight:bold;"></div>
-  <div id="my_address"></div>
-  <div>TEL: <span id="my_tel"></span> / FAX: <span id="my_fax"></span></div>
-</div>
+<!-- 発注先（左）＋ 自社（右） -->
+<div class="flex">
+  <div class="box">
+    <div class="label">発注先</div>
+    <div id="tori_name"></div>
+    <div id="tori_address"></div>
+  </div>
 
-<!-- 発注日・番号 -->
-<div class="flex-between" style="margin-top:10px;">
-  <div></div>
-  <div>
-    発行日：<span id="document_date"></span><br>
-    発注番号：<span id="doc_id"></span>
+  <div class="box">
+    <div class="label">発注元</div>
+    <div id="my_name"></div>
+    <div id="my_address"></div>
   </div>
 </div>
 
-<!-- 発注先 -->
-<div class="box">
-  <div class="label">発注先</div>
-  <div id="tori_name"></div>
-  <div id="tori_address"></div>
-  <div id="tori_department"></div>
-  <div id="tori_person"></div>
-  <div>TEL: <span id="tori_tel"></span> / FAX: <span id="tori_fax"></span></div>
+<!-- 発注日・番号 -->
+<div style="margin-top:10px; text-align:right;">
+  発行日：<span id="document_date"></span><br>
+  発注番号：<span id="doc_id"></span>
 </div>
 
-<!-- 納付先 -->
-<div class="box">
-  <div class="label">納付先（送付先）</div>
-  <div id="delivery_name"></div>
-  <div id="delivery_department"></div>
-  <div id="delivery_person"></div>
-  <div id="delivery_address"></div>
+<!-- 定型文 -->
+<div style="margin-top:10px;">
+  ※納期確定しましたらご連絡ください
 </div>
 
 <!-- 明細 -->
@@ -238,24 +218,35 @@ async function loadPDFData() {
   <tbody id="detail_body"></tbody>
 </table>
 
-<!-- 合計 -->
-<table class="total-table" style="margin-top:20px;">
-  <tr>
-    <td style="width:150px;">合計</td>
-    <td class="right"><span id="total"></span> 円</td>
-  </tr>
-  <tr>
-    <td>消費税（10%）</td>
-    <td class="right"><span id="tax"></span> 円</td>
-  </tr>
-  <tr>
-    <td>合計金額</td>
-    <td class="right"><span id="grand_total"></span> 円</td>
-  </tr>
-</table>
+<!-- 納入先（左）＋ 合計（右） -->
+<div class="total-area">
+  <div class="box" style="flex:1;">
+    <div class="label">納入先</div>
+    <div id="delivery_name"></div>
+    <div id="delivery_department"></div>
+    <div id="delivery_person"></div>
+    <div id="delivery_address"></div>
+  </div>
+
+  <table class="total-table" style="flex:1;">
+    <tr>
+      <td>合計</td>
+      <td class="right"><span id="total"></span> 円</td>
+    </tr>
+    <tr>
+      <td>消費税（10%）</td>
+      <td class="right"><span id="tax"></span> 円</td>
+    </tr>
+    <tr>
+      <td>合計金額</td>
+      <td class="right"><span id="grand_total"></span> 円</td>
+    </tr>
+  </table>
+</div>
 
 <br>
-<button onclick="window.print()">PDF 印刷</button>
+<button id="printBtn" onclick="window.print()">PDF 印刷</button>
+
 <div class="nav-buttons">
   <button onclick="location.href='index.html'">メニューへ戻る</button>
   <button onclick="history.back()">一覧へ戻る</button>
