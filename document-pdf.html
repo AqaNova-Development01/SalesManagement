@@ -176,6 +176,12 @@ async function loadPDFData() {
 
 <body>
 
+<!-- 発注日・番号 -->
+<div style="margin-top:10px; text-align:right;">
+  発行日：<span id="document_date"></span><br>
+  発注番号：<span id="doc_id"></span>
+</div>
+
 <h1>発注書</h1>
 
 <!-- 発注先（左）＋ 発注元（右） -->
@@ -192,12 +198,6 @@ async function loadPDFData() {
       TEL: <span id="my_tel"></span> / FAX: <span id="my_fax"></span>
     </div>
   </div>
-</div>
-
-<!-- 発注日・番号 -->
-<div style="margin-top:10px; text-align:right;">
-  発行日：<span id="document_date"></span><br>
-  発注番号：<span id="doc_id"></span>
 </div>
 
 <!-- 定型文 -->
