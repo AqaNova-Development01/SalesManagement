@@ -111,7 +111,10 @@
     async function search() {
       const year = document.getElementById("year").value;
       const month = document.getElementById("month").value;
-      const yymm = year.toString().slice(2) + month;
+      const start = `${year}-${month}-01`;
+      const end = new Date(year, Number(month), 0)  // 月末
+        .toISOString()
+        .slice(0, 10);
 
       let query = supabase
         .from("kakekin")
@@ -129,9 +132,10 @@
           nouhin_no,
           torihikisaki(name)
         `)
-        .like("id", `%${kubun}${yymm}%`)
         .eq("kake_kbn", kubun)
-        .order("id", { ascending: false });
+        .gte("keijo_date", start)
+        .lte("keijo_date", end)
+        .order("keijo_date", { ascending: true });
 
       if (kubun === "KI") {
         query = query.not("id", "eq", "TK00000");
