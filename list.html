@@ -234,7 +234,18 @@
         (kubun === "UR") ? "売上 一覧" : "仕入 一覧";
 
       if (torihikisaki_id) {
+        // 取引先名を datalist から取得して input にセット
+        const list = document.getElementById("torihikisaki_list").options;
+        for (let opt of list) {
+          if (opt.dataset.id === torihikisaki_id) {
+            document.getElementById("torihikisaki_select").value = opt.value;
+            break;
+          }
+        }
+      
         selected_torihikisaki_id = torihikisaki_id;
+      
+        // 固定したい場合だけ readOnly
         document.getElementById("torihikisaki_select").readOnly = true;
       }
 
