@@ -112,9 +112,8 @@
       const year = document.getElementById("year").value;
       const month = document.getElementById("month").value;
       const start = `${year}-${month}-01`;
-      const end = new Date(year, Number(month), 0)  // 月末
-        .toISOString()
-        .slice(0, 10);
+      const endDate = new Date(Number(year), Number(month), 0);
+      const end = endDate.toISOString().slice(0, 10);
 
       let query = supabase
         .from("kakekin")
