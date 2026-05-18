@@ -112,8 +112,11 @@
       const year = document.getElementById("year").value;
       const month = document.getElementById("month").value;
       const start = `${year}-${month}-01`;
-      const endDate = new Date(Number(year), Number(month), 0);
-      const end = endDate.toISOString().slice(0, 10);
+      // 翌月1日
+      const nextMonth = new Date(Number(year), Number(month), 1)
+        .toISOString()
+        .slice(0, 10);
+
 
       let query = supabase
         .from("kakekin")
@@ -133,7 +136,7 @@
         `)
         .eq("kake_kbn", kubun)
         .gte("keijo_date", start)
-        .lte("keijo_date", end)
+        .lt("keijo_date", nextMonth) 
         .order("keijo_date", { ascending: true });
 
       if (kubun === "KI") {
