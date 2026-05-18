@@ -116,7 +116,9 @@
       const nextMonth = new Date(Number(year), Number(month), 1);
       const nextMonthStr = nextMonth.toISOString().slice(0, 10);
 
-
+  console.log("start =", start);
+  console.log("nextMonthStr =", nextMonthStr);
+      
       let query = supabase
         .from("kakekin")
         .select(`
