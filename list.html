@@ -113,9 +113,8 @@
       const month = document.getElementById("month").value;
       const start = `${year}-${month}-01`;
       // 翌月1日
-      const nextMonth = new Date(Number(year), Number(month), 1)
-        .toISOString()
-        .slice(0, 10);
+      const nextMonth = new Date(Number(year), Number(month), 1);
+      const nextMonthStr = nextMonth.toISOString().slice(0, 10);
 
 
       let query = supabase
@@ -136,7 +135,7 @@
         `)
         .eq("kake_kbn", kubun)
         .gte("keijo_date", start)
-        .lt("keijo_date", nextMonth) 
+        .lt("keijo_date", nextMonthStr) 
         .order("keijo_date", { ascending: true });
 
       if (kubun === "KI") {
@@ -153,11 +152,7 @@
         alert("検索エラー: " + error.message);
         return;
       }
-console.log("start =", start);
-console.log("nextMonth =", nextMonthStr);
-console.log("selected_torihikisaki_id =", selected_torihikisaki_id);
-console.log("data =", data);
-console.log("件数 =", data.length);
+
       // ----------------------------
       // ★ フリーワード検索（JS側でフィルタ）
       // ----------------------------
