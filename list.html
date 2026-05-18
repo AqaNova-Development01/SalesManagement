@@ -117,6 +117,9 @@
       const start = startDate.toISOString().slice(0, 10);
       const end = endDate.toISOString().slice(0, 10);
 
+  console.log("start =", start);
+  console.log("end =", end);
+      
       let query = supabase
         .from("kakekin")
         .select(`
