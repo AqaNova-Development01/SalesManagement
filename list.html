@@ -111,14 +111,12 @@
     async function search() {
       const year = document.getElementById("year").value;
       const month = document.getElementById("month").value;
-      const start = `${year}-${month}-01`;
-      // 翌月1日
-      const nextMonth = new Date(Number(year), Number(month), 1);
-      const nextMonthStr = nextMonth.toISOString().slice(0, 10);
 
-  console.log("start =", start);
-  console.log("nextMonthStr =", nextMonthStr);
-      
+      const startDate = new Date(year, Number(month) - 1, 1);
+      const endDate = new Date(year, Number(month), 1);
+      const start = startDate.toISOString().slice(0, 10);
+      const end = endDate.toISOString().slice(0, 10);
+
       let query = supabase
         .from("kakekin")
         .select(`
@@ -137,7 +135,7 @@
         `)
         .eq("kake_kbn", kubun)
         .gte("keijo_date", start)
-        .lt("keijo_date", nextMonthStr) 
+        .lt("keijo_date", end)
         .order("keijo_date", { ascending: true });
 
       if (kubun === "KI") {
